@@ -131,7 +131,7 @@ fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitma
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         // The user's picture, whole and untouched.
-        background?.let { Image(it, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize()) }
+        background?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
         Column(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GlassLabel("Hidden drawer", 26.sp, weight = FontWeight.Light, modifier = Modifier.weight(1f))
@@ -192,11 +192,11 @@ fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitma
             if (tab == Tab.Apps && vault.hiddenApps.isNotEmpty())
                 GlassLabel("Tap to open · hold to put back", 13.sp, GlassDim, modifier = Modifier.padding(top = 6.dp).align(Alignment.CenterHorizontally))
         }
-        // Inside the display case: where the case's glass sits in the picture (fit to the screen, centred).
+        // Inside the glass cube: where its front glass sits in the picture (filling the screen like the film, centred).
         if (tab == Tab.Numbers || tab == Tab.Apps) BoxWithConstraints(Modifier.fillMaxSize()) {
             val pic = background
             val iw = (pic?.width ?: CASE_IMG_W).toFloat(); val ih = (pic?.height ?: CASE_IMG_H).toFloat()
-            val scale = minOf(maxWidth.value / iw, maxHeight.value / ih)
+            val scale = maxOf(maxWidth.value / iw, maxHeight.value / ih)
             val left = (maxWidth.value - iw * scale) / 2; val top = (maxHeight.value - ih * scale) / 2
             Box(
                 Modifier
@@ -313,10 +313,10 @@ private fun NoteEditor(note: VaultNote, onDone: () -> Unit) {
     }
 }
 
-// The glass case in the user's picture (art/originals/vault_bg.png, 2000×1506): its inside, as fractions.
-private const val CASE_IMG_W = 2000; private const val CASE_IMG_H = 1506
-private const val CASE_L = 0.15f; private const val CASE_R = 0.85f
-private const val CASE_T = 0.285f; private const val CASE_B = 0.70f
+// The glass cube (assets/vault_cube.png, 960×1708: last frame of the smoke film): inside its front glass, as fractions.
+private const val CASE_IMG_W = 960; private const val CASE_IMG_H = 1708
+private const val CASE_L = 0.20f; private const val CASE_R = 0.80f
+private const val CASE_T = 0.445f; private const val CASE_B = 0.77f
 
 @Composable
 private fun Empty(text: String) {

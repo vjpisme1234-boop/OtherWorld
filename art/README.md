@@ -41,7 +41,7 @@ Alien blink (chosen #2) is drawn at runtime, no new files: the mesh just above e
 ## Hidden drawer (2026-10-10)
 | file | source | use |
 |---|---|---|
-| originals/vault_bg.png | ~/Downloads/magnific__photo-a-rectangular-glass-display-case-with-a-brig__62027.png | Background of the hidden drawer, shown whole and untinted. |
+| originals/vault_bg.png | ~/Downloads/magnific__photo-a-rectangular-glass-display-case-with-a-brig__62027.png | Was the hidden drawer's background; replaced by the glass cube (derived/vault_cube.png) on 2026-10-10 at the user's request. Kept here, no longer shipped. |
 
 ## Sounds (generated 2026-10-10, magnific sound effects, 75 credits)
 `art/generated/sounds/` → shipped as `assets/sounds/`: tick (panel passes), open (panel flips open),
@@ -62,3 +62,5 @@ Sounds v2 levelled (2026-10-10): the soft takes were too quiet (user heard only 
 ## App icon (2026-10-10)
 generated/icon/icon_option_1..4.png: Nano Banana Pro, refs = alien_green + glass_tile (300 credits). User picked 1.
 generated/icon/store/: play_store_512.png (Play listing), app_store_1024.png (no alpha). Launcher: res/mipmap-*/ic_launcher(.png/_round/_foreground) + adaptive icon (black background, art at 88/108 dp).
+
+| derived/vault_cube.png | Last frame of assets/vault_open_smoke.mp4 (480×854), 2× Lanczos to 960×1708. Background of the hidden drawer since 2026-10-10 ("make the secret vault the other box"); numbers and hidden apps sit inside its front glass. Shipped as assets/vault_cube.png. |

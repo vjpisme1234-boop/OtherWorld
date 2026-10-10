@@ -402,7 +402,7 @@ class HomeActivity : ComponentActivity() {
                 AnimatedVisibility(vaultOpen, enter = fadeIn(androidx.compose.animation.core.tween(500)), exit = fadeOut(androidx.compose.animation.core.tween(250))) {
                     val bg by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null) {
                         value = withContext(Dispatchers.IO) {
-                            context.assets.open("vault_bg.png").use { android.graphics.BitmapFactory.decodeStream(it) }.asImageBitmap()
+                            context.assets.open("vault_cube.png").use { android.graphics.BitmapFactory.decodeStream(it) }.asImageBitmap()
                         }
                     }
                     com.jp.otherworld.ui.vault.VaultScreen(allApps, state.iconStyle, bg) { vaultOpen = false }
