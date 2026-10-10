@@ -56,7 +56,7 @@ private enum class Tab(val title: String) { Numbers("Numbers"), Apps("Apps"), Fi
 /** The hidden drawer: numbers, hidden apps and files, kept apart from the phone's own. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitmap?, onClose: () -> Unit) {
+fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitmap?, onPanic: () -> Unit = {}, onClose: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val vault by Vault.state.collectAsState()
@@ -79,7 +79,7 @@ fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitma
                 val now = android.os.SystemClock.uptimeMillis()
                 if (e.values[2] < -7f) {
                     if (downSince < 0) downSince = now
-                    if (now - downSince > 300) { downSince = Long.MAX_VALUE / 2; onClose() }
+                    if (now - downSince > 300) { downSince = Long.MAX_VALUE / 2; onPanic() }
                 } else downSince = -1L
             }
             override fun onAccuracyChanged(s: android.hardware.Sensor?, a: Int) {}

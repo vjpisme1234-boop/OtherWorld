@@ -64,3 +64,4 @@ generated/icon/icon_option_1..4.png: Nano Banana Pro, refs = alien_green + glass
 generated/icon/store/: play_store_512.png (Play listing), app_store_1024.png (no alpha). Launcher: res/mipmap-*/ic_launcher(.png/_round/_foreground) + adaptive icon (black background, art at 88/108 dp).
 
 | derived/vault_cube.png | Last frame of assets/vault_open_smoke.mp4 (480×854), 2× Lanczos to 960×1708. Background of the hidden drawer since 2026-10-10 ("make the secret vault the other box"); numbers and hidden apps sit inside its front glass. Shipped as assets/vault_cube.png. |
+| assets/vault_close.mp4, assets/vault_close_smoke.mp4 | The two opening films played backwards (ffmpeg reverse, x264 crf 18, no audio). Played when the hidden drawer is closed with Close or Back (2026-10-10, "when closing the vault make everything go in reverse"). Face-down closes at once. |

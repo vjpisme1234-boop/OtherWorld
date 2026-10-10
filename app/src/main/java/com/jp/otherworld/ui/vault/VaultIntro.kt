@@ -20,13 +20,15 @@ import androidx.compose.ui.viewinterop.AndroidView
  * The hidden drawer's opening: the magnific video (assets/vault_open.mp4) of the alien going up in
  * smoke and the glass case appearing, full screen and cropped to fill it like the wallpaper.
  * `onFinished` fires when it ends (or can't play), so the drawer can fade in over its last frame.
+ * Closing plays the reversed copy (vault_close*.mp4); `onFirstFrame` lets the drawer fade out under it.
  */
 @Composable
-fun VaultIntro(asset: String = "vault_open.mp4", onFinished: () -> Unit) {
+fun VaultIntro(asset: String = "vault_open.mp4", onFirstFrame: () -> Unit = {}, onFinished: () -> Unit) {
     // Stay invisible (home still showing) until the first video frame is up, then fade in: no black flash.
     val fade = remember { Animatable(0f) }
     var firstFrame by remember { mutableStateOf(false) }
-    LaunchedEffect(firstFrame) { if (firstFrame) fade.animateTo(1f, tween(200)) }
+    val shown by rememberUpdatedState(onFirstFrame)
+    LaunchedEffect(firstFrame) { if (firstFrame) { shown(); fade.animateTo(1f, tween(200)) } }
     val finished by rememberUpdatedState(onFinished)
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
     DisposableEffect(Unit) { onDispose { player?.release(); player = null } }

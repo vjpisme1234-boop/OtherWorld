@@ -130,13 +130,14 @@ class HomeActivity : ComponentActivity() {
 
             var introPlaying by remember { mutableStateOf(false) }
             var introPreview by remember { mutableStateOf(false) }
+            var outroPlaying by remember { mutableStateOf(false) }
             var previewStyle by remember { mutableStateOf("VIDEO") }
             fun closeAll() {
                 drawerOpen = false; allAppsOpen = false; settingsOpen = false; editPagesOpen = false
                 widgetsOpen = false; wallpaperOpen = false; homeMenuOpen = false; chooserSlot = null
                 appMenu = null; editingWidget = null; vaultOpen = false
                 openFolder = null; folderMenu = null; renaming = null
-                introPlaying = false; introPreview = false
+                introPlaying = false; introPreview = false; outroPlaying = false
                 ringListOpen = false; recentOpen = false; ringPicker = null
             }
             // Opening the hidden drawer: the alien breaks apart first (if it's the wallpaper), then the drawer fades in.
@@ -149,7 +150,10 @@ class HomeActivity : ComponentActivity() {
                     scope.launch { delay(1300); vaultOpen = true }
                 } else vaultOpen = true
             }
-            // Closing it puts the face back together.
+            // Closing runs the opening backwards: the reversed film (cube → smoke → alien), or the face reforming.
+            fun closeVault() {
+                if (state.vaultEffect.startsWith("VIDEO")) outroPlaying = true else vaultOpen = false
+            }
             var vaultWasOpen by remember { mutableStateOf(false) }
             LaunchedEffect(vaultOpen) {
                 if (vaultOpen) vaultWasOpen = true else if (vaultWasOpen) { vaultWasOpen = false; AlienSignals.reform() }
@@ -169,7 +173,7 @@ class HomeActivity : ComponentActivity() {
             }
 
             // Back closes the top-most layer.
-            BackHandler(vaultOpen) { vaultOpen = false }
+            BackHandler(vaultOpen || outroPlaying) { if (!outroPlaying) closeVault() }
             BackHandler(introPlaying || introPreview) { introPlaying = false; introPreview = false }
             BackHandler(appMenu != null) { appMenu = null }
             BackHandler(ringPicker != null) { ringPicker = null }
@@ -394,6 +398,7 @@ class HomeActivity : ComponentActivity() {
                     }
                 }
                 fun introAsset(style: String) = if (style == "VIDEO_SMOKE") "vault_open_smoke.mp4" else "vault_open.mp4"
+                fun outroAsset(style: String) = if (style == "VIDEO_SMOKE") "vault_close_smoke.mp4" else "vault_close.mp4"
                 if (introPlaying) VaultIntro(introAsset(state.vaultEffect)) {
                     vaultOpen = true
                     scope.launch { delay(700); introPlaying = false }
@@ -405,7 +410,12 @@ class HomeActivity : ComponentActivity() {
                             context.assets.open("vault_cube.png").use { android.graphics.BitmapFactory.decodeStream(it) }.asImageBitmap()
                         }
                     }
-                    com.jp.otherworld.ui.vault.VaultScreen(allApps, state.iconStyle, bg) { vaultOpen = false }
+                    // Face-down (panic) shuts it at once; Close and Back play it in reverse.
+                    com.jp.otherworld.ui.vault.VaultScreen(allApps, state.iconStyle, bg, onPanic = { vaultOpen = false; outroPlaying = false }) { closeVault() }
+                }
+                // The film starts on the cube, so the drawer fades out under it; it ends on the alien, then fades to home.
+                AnimatedVisibility(outroPlaying, enter = androidx.compose.animation.EnterTransition.None, exit = fadeOut(androidx.compose.animation.core.tween(400))) {
+                    VaultIntro(outroAsset(state.vaultEffect), onFirstFrame = { vaultOpen = false }) { vaultOpen = false; outroPlaying = false }
                 }
             }
         }
