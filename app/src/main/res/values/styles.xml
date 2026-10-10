@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Other World</string>
+    <string name="wp_globe">Spinning globe</string>
+    <string name="wp_alien">Alien (cyan)</string>
+    <string name="wp_alien_green">Alien (neon green)</string>
+    <string name="wp_alien_pink">Alien (neon pink)</string>
+    <string name="wp_alien_purple">Alien (neon purple)</string>
+    <string name="wp_alien_red">Alien (neon red)</string>
+    <string name="wp_alien_gold">Alien (gold)</string>
+    <string name="wp_alien_ice">Alien (ice white)</string>
+    <string name="wp_alien_blue">Alien (deep blue)</string>
+
+    <style name="Theme.OtherWorld" parent="android:Theme.Material.NoActionBar">
+        <!-- The phone's own wallpaper shows behind home -->
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+    </style>
+    <string name="gesture_desc">Lets Other World lock your screen when you double-tap empty space on the home screen. Other World does not read or collect anything on your screen.</string>
+</resources>
