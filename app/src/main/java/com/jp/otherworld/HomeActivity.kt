@@ -517,10 +517,11 @@ private fun Modifier.leanAlien(): Modifier = pointerInput(Unit) {
 
 /** The two eyes of the alien wallpaper: spots as fractions of the image, plus the image size. */
 private class AlienEyes(val spots: List<android.graphics.RectF>, val imgW: Int, val imgH: Int) {
-    /** Each eye on a screen of w×h, placed the way the wallpaper draws it (scaled to cover, centred). */
+    /** Each eye on a screen of w×h, placed the way the wallpaper draws it ([alienPlace]). */
     fun onScreen(w: Float, h: Float): List<androidx.compose.ui.geometry.Rect> {
-        val sc = maxOf(w / imgW, h / imgH)
-        val l = (w - imgW * sc) / 2f; val t = (h - imgH * sc) / 2f
+        val p = com.jp.otherworld.wallpaper.alienPlace(w, h, imgW, imgH)
+        val sc = p.width() / imgW
+        val l = p.left; val t = p.top
         return spots.map { androidx.compose.ui.geometry.Rect(l + it.left * imgW * sc, t + it.top * imgH * sc, l + it.right * imgW * sc, t + it.bottom * imgH * sc) }
     }
 }

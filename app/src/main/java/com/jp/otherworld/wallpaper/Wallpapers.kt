@@ -364,10 +364,11 @@ open class AlienWallpaperService : WallpaperService() {
                 // Battery mood: full neon above 50%, fading to dim at 15% and below.
                 val mood = if (battery >= 0.5f) 1f else 0.25f + 0.75f * ((battery - 0.15f) / 0.35f).coerceIn(0f, 1f)
                 val night = nightAmount()
-                // Fills the screen the way Android shows a still wallpaper (scaled to cover, centred).
-                val sc = maxOf(c.width / alien.width.toFloat(), c.height / alien.height.toFloat())
-                val aw = alien.width * sc; val ah = alien.height * sc
-                val l = (c.width - aw) / 2f + moveX; val top = (c.height - ah) / 2f + float + moveY
+                // Fills the screen, but on narrow phones shrinks so the whole face and both eyes show (see alienPlace).
+                val place = alienPlace(c.width.toFloat(), c.height.toFloat(), alien.width, alien.height)
+                val sc = place.width() / alien.width
+                val aw = place.width(); val ah = place.height()
+                val l = place.left + moveX; val top = place.top + float + moveY
                 val g = 1.12f
                 // Hidden drawer: 0 = whole face, 1 = broken apart and gone.
                 val gone = com.jp.otherworld.data.AlienSignals.shatterProgress(now)
@@ -534,6 +535,23 @@ fun alienEyeSpots(context: android.content.Context): List<RectF> {
     }
     return found.sortedByDescending { it.first }.take(2).map { it.second }.sortedBy { it.left }
 }
+
+/**
+ * Where the alien image goes on a w×h screen (before float/tilt/lean). Normally it covers the screen like a
+ * still wallpaper; on narrow phones that would cut the eyes in half, so it shrinks until ~85% of the face's
+ * width shows, with the eyes a little above the middle and black below. Home's eye spots use this too.
+ */
+fun alienPlace(w: Float, h: Float, iw: Int, ih: Int): RectF {
+    val cover = maxOf(w / iw, h / ih)
+    val sc = minOf(cover, w / (ALIEN_KEEP_W * iw))
+    val aw = iw * sc; val ah = ih * sc
+    var t = if (sc < cover) h * 0.45f - ALIEN_EYES_Y * ah else (h - ah) / 2f
+    t = t.coerceIn(minOf(0f, h - ah), maxOf(0f, h - ah))
+    val l = (w - aw) / 2f
+    return RectF(l, t, l + aw, t + ah)
+}
+private const val ALIEN_KEEP_W = 0.85f   // share of the face's width always on screen
+private const val ALIEN_EYES_Y = 0.58f   // eye line, as a fraction of the image height
 
 /** Alien image size (width, height) — needed to place the eyes on screen the way the wallpaper does. */
 fun alienSize(context: android.content.Context): Pair<Int, Int> {
