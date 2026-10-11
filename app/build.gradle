@@ -3,16 +3,39 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Release signing: the upload key lives outside the repo (../OtherWorld-keys), never committed.
+def keyProps = new Properties()
+def keyFile = rootProject.file('../OtherWorld-keys/keystore.properties')
+if (keyFile.exists()) keyFile.withInputStream { keyProps.load(it) }
+
 android {
     namespace 'com.jp.otherworld'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.jp.otherworld"
         minSdk 30
-        targetSdk 34
+        targetSdk 36
         versionCode 1
-        versionName "0.1"
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            if (keyFile.exists()) {
+                storeFile file(keyProps['storeFile'])
+                storePassword keyProps['storePassword']
+                keyAlias keyProps['keyAlias']
+                keyPassword keyProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
     }
 
     buildFeatures {
