@@ -130,8 +130,14 @@ fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitma
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        // The user's picture, whole and untouched.
-        background?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+        // The glass cube, placed to fit this screen (same as the film, so it lines up).
+        background?.let { pic ->
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                val f = vaultFit(size.width, size.height, pic.width.toFloat(), pic.height.toFloat(), VAULT_TOP_DP.dp.toPx(), VAULT_BOTTOM_DP.dp.toPx())
+                drawImage(pic, dstOffset = androidx.compose.ui.unit.IntOffset(f.left.toInt(), f.top.toInt()),
+                    dstSize = androidx.compose.ui.unit.IntSize(f.width.toInt(), f.height.toInt()))
+            }
+        }
         Column(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GlassLabel("Hidden drawer", 26.sp, weight = FontWeight.Light, modifier = Modifier.weight(1f))
@@ -192,12 +198,12 @@ fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitma
             if (tab == Tab.Apps && vault.hiddenApps.isNotEmpty())
                 GlassLabel("Tap to open · hold to put back", 13.sp, GlassDim, modifier = Modifier.padding(top = 6.dp).align(Alignment.CenterHorizontally))
         }
-        // Inside the glass cube: where its front glass sits in the picture (filling the screen like the film, centred).
+        // Inside the glass cube: where its front glass sits in the picture, placed as above.
         if (tab == Tab.Numbers || tab == Tab.Apps) BoxWithConstraints(Modifier.fillMaxSize()) {
             val pic = background
             val iw = (pic?.width ?: CASE_IMG_W).toFloat(); val ih = (pic?.height ?: CASE_IMG_H).toFloat()
-            val scale = maxOf(maxWidth.value / iw, maxHeight.value / ih)
-            val left = (maxWidth.value - iw * scale) / 2; val top = (maxHeight.value - ih * scale) / 2
+            val f = vaultFit(maxWidth.value, maxHeight.value, iw, ih, VAULT_TOP_DP, VAULT_BOTTOM_DP)
+            val scale = f.width / iw; val left = f.left; val top = f.top
             Box(
                 Modifier
                     .offset((left + CASE_L * iw * scale).dp, (top + CASE_T * ih * scale).dp)
@@ -213,8 +219,11 @@ fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitma
                                         .padding(horizontal = 12.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    GlassLabel(n.name.ifBlank { "No name" }, 15.sp, modifier = Modifier.weight(1f))
-                                    GlassLabel(n.number, 14.sp, GlassCyan)
+                                    // One line each: on narrow cubes the name shortens with "…" instead of wrapping.
+                                    BasicText(n.name.ifBlank { "No name" }, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        style = TextStyle(color = GlassText, fontSize = 15.sp))
+                                    Spacer(Modifier.width(8.dp))
+                                    BasicText(n.number, maxLines = 1, softWrap = false, style = TextStyle(color = GlassCyan, fontSize = 14.sp))
                                 }
                             }
                         }

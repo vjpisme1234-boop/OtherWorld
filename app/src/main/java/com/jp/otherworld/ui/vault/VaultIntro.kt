@@ -33,7 +33,8 @@ fun VaultIntro(asset: String = "vault_open.mp4", onFirstFrame: () -> Unit = {}, 
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
     DisposableEffect(Unit) { onDispose { player?.release(); player = null } }
 
-    Box(Modifier.fillMaxSize().alpha(fade.value)) {
+    // Black behind the film: on wide screens it doesn't fill the sides.
+    Box(Modifier.fillMaxSize().alpha(fade.value).background(Color.Black)) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
@@ -65,15 +66,41 @@ fun VaultIntro(asset: String = "vault_open.mp4", onFirstFrame: () -> Unit = {}, 
     }
 }
 
-/** Scale the video to cover the view (centred, cropped), like the wallpaper fills the screen. */
+/** Place the video like the drawer's picture (see [vaultFit]), so the cube lines up on every screen. */
 private fun cover(view: TextureView, vw: Int, vh: Int) {
     if (vw == 0 || vh == 0 || view.width == 0 || view.height == 0) return
     val w = view.width.toFloat(); val h = view.height.toFloat()
-    val s = maxOf(w / vw, h / vh)
-    // TextureView stretches the video to the view first; undo that, then scale to cover.
-    val sx = vw * s / w; val sy = vh * s / h
-    view.setTransform(Matrix().apply { setScale(sx, sy, w / 2f, h / 2f) })
+    val d = view.resources.displayMetrics.density
+    val f = vaultFit(w, h, vw.toFloat(), vh.toFloat(), VAULT_TOP_DP * d, VAULT_BOTTOM_DP * d)
+    // TextureView stretches the video to the view first; undo that, then scale and place it.
+    view.setTransform(Matrix().apply { setScale(f.width / w, f.height / h); postTranslate(f.left, f.top) })
 }
+
+/**
+ * Where the vault picture/film goes on a w×h screen: fills it like a crop on normal phones, but always keeps
+ * the whole glass cube (and its base) in view, so wider, squarer and folding screens don't cut it off.
+ * The cube stays between the drawer's header (`top`) and its bottom button (`bottom`).
+ * Any spare space is left at the black top or sides, never under the bright floor.
+ */
+fun vaultFit(w: Float, h: Float, iw: Float, ih: Float, top: Float = 0f, bottom: Float = 0f): androidx.compose.ui.geometry.Rect {
+    var s = maxOf(w / iw, h / ih)
+    s = minOf(s, w / ((KEEP_R - KEEP_L) * iw), (h - top - bottom) / ((KEEP_B - KEEP_T) * ih))
+    val dw = iw * s; val dh = ih * s
+    var x = ((w - dw) / 2).within(-KEEP_L * dw, w - KEEP_R * dw)
+    var y = ((h - dh) / 2).within(top - KEEP_T * dh, h - bottom - KEEP_B * dh)
+    if (dh > h) y = y.coerceAtLeast(h - dh) else y = h - dh
+    if (dw > w) x = x.within(w - dw, 0f)
+    return androidx.compose.ui.geometry.Rect(x, y, x + dw, y + dh)
+}
+
+// coerceIn that tolerates lo a hair above hi (float rounding when the cube fits exactly).
+private fun Float.within(lo: Float, hi: Float) = if (lo > hi) (lo + hi) / 2 else coerceIn(lo, hi)
+
+// The part of the picture that must stay on screen: the cube, its base and a little room, as fractions.
+private const val KEEP_L = 0.12f; private const val KEEP_R = 0.88f
+private const val KEEP_T = 0.38f; private const val KEEP_B = 0.86f
+// Room kept for the drawer's header (title + tabs) and its bottom button.
+const val VAULT_TOP_DP = 175f; const val VAULT_BOTTOM_DP = 90f
 
 /**
  * A colour filter turning the cyan alien into the colour of the alien wallpaper that's set (same hue
