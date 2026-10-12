@@ -51,6 +51,12 @@ fun VaultIntro(asset: String = "vault_open.mp4", onFirstFrame: () -> Unit = {}, 
                                 mp.setOnVideoSizeChangedListener { _, vw, vh -> cover(this@apply, vw, vh) }
                                 mp.setOnCompletionListener { finished() }
                                 mp.setOnErrorListener { _, _, _ -> finished(); true }
+                                // The smoke film has its own sounds (boom, star, beam): silent when the phone is on
+                                // silent/vibrate or the launcher's sounds are off, like the wheel's sounds.
+                                val audio = ctx.getSystemService(android.media.AudioManager::class.java)
+                                val loud = com.jp.otherworld.data.LauncherStore.state.value.sounds &&
+                                    audio?.ringerMode == android.media.AudioManager.RINGER_MODE_NORMAL
+                                mp.setVolume(if (loud) 0.7f else 0f, if (loud) 0.7f else 0f)
                                 mp.setOnPreparedListener { it.start() }
                                 mp.prepareAsync()
                             }.isSuccess
