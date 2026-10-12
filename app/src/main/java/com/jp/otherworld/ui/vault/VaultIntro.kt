@@ -56,7 +56,7 @@ fun VaultIntro(asset: String = "vault_open.mp4", onFirstFrame: () -> Unit = {}, 
                                 val audio = ctx.getSystemService(android.media.AudioManager::class.java)
                                 val loud = com.jp.otherworld.data.LauncherStore.state.value.sounds &&
                                     audio?.ringerMode == android.media.AudioManager.RINGER_MODE_NORMAL
-                                mp.setVolume(if (loud) 0.7f else 0f, if (loud) 0.7f else 0f)
+                                mp.setVolume(if (loud) 1f else 0f, if (loud) 1f else 0f)
                                 mp.setOnPreparedListener { it.start() }
                                 mp.prepareAsync()
                             }.isSuccess
