@@ -105,83 +105,85 @@ class TalkListener {
 }
 
 /**
- * The alien's mouth, drawn in image pixels (the canvas is already placed and scaled like the face).
- * The mouth shapes are real frames from the lip-sync video the user liked (assets/talk/m0..m9, closed to
- * wide open, lined up with this alien's lips and feathered into the face). The louder the voice, the more
- * open the frame shown; it fades in from the face's own closed lips. A small jaw drop goes with it.
- * Tinted to the wallpaper's colour (same hue shifts the coloured aliens were made with).
+ * Talking face: while a voice plays, the alien becomes the frames of the lip-sync video the user liked
+ * (assets/talkface/f000…, the whispering part only, no laugh or smirk), lined up with this alien and cut out
+ * the same way (brightness → see-through), tinted to the wallpaper's colour. They play in order so the head
+ * moves like in the video, but skip ahead to frames whose mouth matches how loud the voice is right now.
+ * When the voice stops the frames fade back to the normal face.
  */
-class Mouth(assets: android.content.res.AssetManager, private val alien: Bitmap, asset: String) {
-    private val w = alien.width.toFloat(); private val h = alien.height.toFloat()
-    private val sprites: List<Bitmap>
-    private val box: RectF
+class TalkFace(private val assets: android.content.res.AssetManager, asset: String) {
+    private val count: Int
+    private val fps: Float
+    private val openOf: FloatArray
     init {
-        val meta = org.json.JSONObject(assets.open("talk/talk.json").bufferedReader().use { it.readText() })
-        sprites = (0 until meta.getInt("count")).map { i -> assets.open("talk/m$i.png").use { android.graphics.BitmapFactory.decodeStream(it) } }
-        box = RectF((meta.getDouble("x") * w).toFloat(), (meta.getDouble("y") * h).toFloat(),
-            ((meta.getDouble("x") + meta.getDouble("w")) * w).toFloat(), ((meta.getDouble("y") + meta.getDouble("h")) * h).toFloat())
+        val meta = org.json.JSONObject(assets.open("talkface/talkface.json").bufferedReader().use { it.readText() })
+        count = meta.getInt("count"); fps = meta.getDouble("fps").toFloat()
+        val arr = meta.getJSONArray("open"); openOf = FloatArray(count) { arr.getDouble(it).toFloat() }
     }
-    private val spritePaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
-        tint(asset)?.let { colorFilter = android.graphics.ColorMatrixColorFilter(it) }
+    private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
+        Mouth.tint(asset)?.let { colorFilter = android.graphics.ColorMatrixColorFilter(it) }
     }
-    private var shown = 0f   // eased frame position, so frames don't flicker
-
-    // Jaw: the lower face below the lips drops a little, fading to still at its sides (the head never moves).
-    private val cx = w * 0.518f; private val lipY = h * 0.8375f
-    private val jawHalf = w * 0.32f; private val maxJaw = h * 0.014f
-    private val lLeft = (cx - jawHalf).toInt().coerceAtLeast(0); private val lRight = (cx + jawHalf).toInt().coerceAtMost(alien.width)
-    private val mid = lipY.toInt(); private val lBottom = alien.height
-    private val lower = Bitmap.createBitmap(alien, lLeft, mid, lRight - lLeft, lBottom - mid)
-    private val colsL = 32; private val rowsL = 14
-    private val vl = FloatArray((colsL + 1) * (rowsL + 1) * 2)
-    private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
-
-    private fun bell(x: Float, span: Float): Float {
-        val d = (x - cx) / span
-        if (d <= -1f || d >= 1f) return 0f
-        val c = Math.cos(d * Math.PI / 2).toFloat(); return c * c
+    private val cache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
+        override fun removeEldestEntry(e: MutableMap.MutableEntry<Int, Bitmap>?) = size > 10
     }
+    private fun frame(i: Int): Bitmap? = cache[i] ?: runCatching {
+        assets.open("talkface/f%03d.webp".format(i)).use { android.graphics.BitmapFactory.decodeStream(it) }
+    }.getOrNull()?.also { cache[i] = it }
 
-    fun draw(c: Canvas, open: Float, @Suppress("UNUSED_PARAMETER") wide: Float) {
-        shown += (open * (sprites.size - 1) - shown) * 0.5f
-        if (open < 0.03f && shown < 0.3f) return
-        // Jaw (under the mouth image, so its top edge is hidden by it).
-        val jaw = maxJaw * open
-        if (jaw > 0.2f) {
-            var i = 0
-            val lw = (lRight - lLeft).toFloat()
-            for (r in 0..rowsL) {
-                val u = r / rowsL.toFloat()
-                val y0 = mid + (lBottom - mid) * u
-                val ease = (u / 0.35f).coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
-                for (k in 0..colsL) { val x = lLeft + lw * k / colsL; vl[i++] = x; vl[i++] = y0 + jaw * bell(x, jawHalf) * maxOf(bell(x, w * 0.12f), ease) }
-            }
-            c.drawBitmapMesh(lower, colsL, rowsL, vl, 0, null, 0, paint)
+    private var pos = 0f; private var dir = 1
+    /** 0 = normal face, 1 = video face. */
+    var amount = 0f; private set
+    private var lastAt = 0L
+
+    /** Advance by the time since the last frame; `open` = how loud the voice is now (0..1). */
+    fun update(now: Long, open: Float) {
+        val dt = if (lastAt == 0L) 0.033f else ((now - lastAt) / 1000f).coerceIn(0f, 0.1f)
+        lastAt = now
+        val talking = open > 0.06f
+        amount += ((if (talking) 1f else 0f) - amount) * (if (talking) 0.25f else 0.08f)
+        if (amount < 0.01f) { amount = 0f; return }
+        pos += dir * fps * dt
+        if (pos >= count - 1) { pos = (count - 1).toFloat(); dir = -1 }
+        if (pos <= 0f) { pos = 0f; dir = 1 }
+        // Look a few frames ahead (in the playing direction) for the mouth that best matches the voice.
+        val base = Math.round(pos)
+        var best = base; var bestErr = Float.MAX_VALUE
+        for (k in 0..6) {
+            val j = base + dir * k
+            if (j !in 0 until count) break
+            val err = kotlin.math.abs(openOf[j] - open) + k * 0.03f
+            if (err < bestErr) { bestErr = err; best = j }
         }
-        // The mouth frame for this loudness, fading in from the face's own lips when nearly closed.
-        val idx = shown.roundToIntSafe().coerceIn(0, sprites.size - 1)
-        spritePaint.alpha = (255 * (shown / 1.2f).coerceIn(0f, 1f)).toInt()
-        c.drawBitmap(sprites[idx], null, box, spritePaint)
+        if (best != base) pos = best.toFloat()
     }
 
-    private fun Float.roundToIntSafe() = Math.round(this)
+    /** Draws the current frame in image pixels (same size and place as the alien image). */
+    fun draw(c: Canvas) {
+        if (amount <= 0f) return
+        val f = frame(Math.round(pos).coerceIn(0, count - 1)) ?: return
+        paint.alpha = (255 * amount).toInt()
+        c.drawBitmap(f, 0f, 0f, paint)
+    }
 
-    companion object {
-        /** Hue shift from the cyan original to this wallpaper's colour (null = cyan). */
-        fun tint(asset: String): android.graphics.ColorMatrix? {
-            if (asset.contains("ice")) return android.graphics.ColorMatrix().apply { setSaturation(0.18f) }
-            val deg = when {
-                asset.contains("green") -> -71f; asset.contains("pink") -> 133f; asset.contains("purple") -> 86f
-                asset.contains("red") -> 174f; asset.contains("gold") -> -162f; asset.contains("blue") -> 39f
-                else -> return null
-            }
-            val r = Math.toRadians(deg.toDouble()); val a = Math.cos(r).toFloat(); val b = Math.sin(r).toFloat()
-            return android.graphics.ColorMatrix(floatArrayOf(
-                0.213f + 0.787f * a - 0.213f * b, 0.715f - 0.715f * a - 0.715f * b, 0.072f - 0.072f * a + 0.928f * b, 0f, 0f,
-                0.213f - 0.213f * a + 0.143f * b, 0.715f + 0.285f * a + 0.140f * b, 0.072f - 0.072f * a - 0.283f * b, 0f, 0f,
-                0.213f - 0.213f * a - 0.787f * b, 0.715f - 0.715f * a + 0.715f * b, 0.072f + 0.928f * a + 0.072f * b, 0f, 0f,
-                0f, 0f, 0f, 1f, 0f
-            ))
+    fun clear() { cache.clear(); amount = 0f; lastAt = 0L }
+}
+
+/** Colour helpers for the talking face. */
+object Mouth {
+    /** Hue shift from the cyan original to this wallpaper's colour (null = cyan). */
+    fun tint(asset: String): android.graphics.ColorMatrix? {
+        if (asset.contains("ice")) return android.graphics.ColorMatrix().apply { setSaturation(0.18f) }
+        val deg = when {
+            asset.contains("green") -> -71f; asset.contains("pink") -> 133f; asset.contains("purple") -> 86f
+            asset.contains("red") -> 174f; asset.contains("gold") -> -162f; asset.contains("blue") -> 39f
+            else -> return null
         }
+        val r = Math.toRadians(deg.toDouble()); val a = Math.cos(r).toFloat(); val b = Math.sin(r).toFloat()
+        return android.graphics.ColorMatrix(floatArrayOf(
+            0.213f + 0.787f * a - 0.213f * b, 0.715f - 0.715f * a - 0.715f * b, 0.072f - 0.072f * a + 0.928f * b, 0f, 0f,
+            0.213f - 0.213f * a + 0.143f * b, 0.715f + 0.285f * a + 0.140f * b, 0.072f - 0.072f * a - 0.283f * b, 0f, 0f,
+            0.213f - 0.213f * a - 0.787f * b, 0.715f - 0.715f * a + 0.715f * b, 0.072f + 0.928f * a + 0.072f * b, 0f, 0f,
+            0f, 0f, 0f, 1f, 0f
+        ))
     }
 }

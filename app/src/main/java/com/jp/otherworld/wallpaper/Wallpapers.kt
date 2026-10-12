@@ -204,7 +204,7 @@ open class AlienWallpaperService : WallpaperService() {
         )
         private val eyes = EyeLids(alien, seam)
         // Talk along (test): lips move with the phone's sound.
-        private val mouth = Mouth(assets, alien, asset)
+        private val talkFace = TalkFace(assets, asset)
         private val talk = TalkListener()
         // Breaking apart for the hidden drawer, built the first time each style is used.
         private val shatters = HashMap<ShatterStyle, Shatter>()
@@ -218,6 +218,11 @@ open class AlienWallpaperService : WallpaperService() {
         private val sweepLayer = Paint().apply { blendMode = android.graphics.BlendMode.SCREEN }
         private val sweepMask = Paint().apply { blendMode = android.graphics.BlendMode.DST_IN }
         private val dimPaint = Paint()
+        // Fades the still face out under the talking face (same shape, drawn as black).
+        private val maskPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix(floatArrayOf(
+                0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 1f, 0f)))
+        }
 
         init { com.jp.otherworld.data.LauncherStore.init(applicationContext) }
 
@@ -284,7 +289,7 @@ open class AlienWallpaperService : WallpaperService() {
                 sensors?.unregisterListener(this)
                 runCatching { unregisterReceiver(batteryWatch) }
                 haveRest = false
-                talk.stop()
+                talk.stop(); talkFace.clear()
             }
         }
 
@@ -364,6 +369,11 @@ open class AlienWallpaperService : WallpaperService() {
                 val wantX = if (leaning) (sig.touchX - 0.5f) * 2f * leanReach else 0f
                 val wantY = if (leaning) (sig.touchY - 0.5f) * 2f * leanReach else 0f
                 leanX += (wantX - leanX) * 0.12f; leanY += (wantY - leanY) * 0.12f
+                // Talk along: how open the mouth is now, and a slower "is talking" level for head movement.
+                val talkMode = com.jp.otherworld.data.LauncherStore.state.value.talkMode
+                val talkOpen = if (talkMode != "OFF" && talk.start(applicationContext)) talk.open(talkMode == "ANY") else { talk.stop(); 0f }
+                // While a voice plays, the face becomes the lip-sync video (its head movement and mouth).
+                talkFace.update(now, talkOpen)
                 val moveX = tiltX + leanX; val moveY = tiltY + leanY
                 // Battery mood: full neon above 50%, fading to dim at 15% and below.
                 val mood = if (battery >= 0.5f) 1f else 0.25f + 0.75f * ((battery - 0.15f) / 0.35f).coerceIn(0f, 1f)
@@ -393,9 +403,11 @@ open class AlienWallpaperService : WallpaperService() {
                 // At night the eyes rest half shut, and blinks close them the rest of the way.
                 val blink = blinkAmount(now)
                 eyes.draw(c, 0f, 0f, night * 0.5f + blink * (1f - night * 0.5f), paint)
-                val talkMode = com.jp.otherworld.data.LauncherStore.state.value.talkMode
-                if (talkMode != "OFF" && talk.start(applicationContext)) mouth.draw(c, talk.open(talkMode == "ANY"), talk.width())
-                else talk.stop()
+                if (talkFace.amount > 0f) {
+                    // Cover the still face with black (its eyelids too), then the video face on top.
+                    c.drawBitmap(alien, 0f, 0f, maskPaint.also { it.alpha = (255 * talkFace.amount).toInt() })
+                    talkFace.draw(c)
+                }
                 c.restoreToCount(save)
                 // Charging: a bright band of the halo sweeps up the face every 2.5 s.
                 if (charging) {
