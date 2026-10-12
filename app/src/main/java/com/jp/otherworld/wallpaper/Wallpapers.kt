@@ -204,7 +204,7 @@ open class AlienWallpaperService : WallpaperService() {
         )
         private val eyes = EyeLids(alien, seam)
         // Talk along (test): lips move with the phone's sound.
-        private val mouth = Mouth(alien, seam)
+        private val mouth = Mouth(assets, alien, asset)
         private val talk = TalkListener()
         // Breaking apart for the hidden drawer, built the first time each style is used.
         private val shatters = HashMap<ShatterStyle, Shatter>()
