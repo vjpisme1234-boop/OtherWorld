@@ -11,6 +11,8 @@
     <!-- Only when the user records their own wheel sound (asked at that moment). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Only to make the Radio Control ringtone the phone's ringtone, when the user taps Set (allowed in Settings). -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" xmlns:tools="http://schemas.android.com/tools" tools:ignore="ProtectedPermissions" />
 
     <!-- A launcher must see every launchable app -->
     <queries>

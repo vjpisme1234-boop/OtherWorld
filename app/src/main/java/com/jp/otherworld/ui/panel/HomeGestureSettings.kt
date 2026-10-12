@@ -69,4 +69,6 @@ fun HomeGestureSettings(state: LauncherState) {
     }
 
     SoundSettings(state)
+
+    RingtoneSettings()
 }
