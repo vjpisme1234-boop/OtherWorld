@@ -70,7 +70,10 @@ private fun SoundRow(state: LauncherState, kind: String, name: String) {
             GlassButton("Off", selected = !on) { LauncherStore.update { it.copy(soundOff = it.soundOff + kind) } }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val picked = state.soundPick[kind] ?: Sounds.defaultPick(kind)
+            // A saved pick that no longer ships (or a deleted "Mine") lights the default instead.
+            val picked = (state.soundPick[kind] ?: Sounds.defaultPick(kind)).let { p ->
+                if (p in Sounds.takes(kind) || (p == Sounds.MINE && hasMine)) p else Sounds.defaultPick(kind)
+            }
             Sounds.takes(kind).forEach { n ->
                 GlassButton("$n", selected = picked == n) {
                     LauncherStore.update { it.copy(soundPick = it.soundPick + (kind to n)) }

@@ -57,7 +57,7 @@ Sounds v2 (same day): user said the first set was "a bit too harsh" → regenera
 | generated/vault_open_1080.mp4 | Seedance 2.5 1080p (3,950 credits), same start/end/prompt as the draft. Alien → fine glowing dust → the user's own wide display case. Now shipped as assets/vault_open.mp4 (draft kept in generated/vault_open_draft.mp4). |
 | generated/vault_open_smoke_draft.mp4 | Seedance 2.5 Draft (1,000 credits): alien → thick cyan smoke → star flash → light beam → glass cube (end frame = last frame of the first draft). User wanted this one too, with the HD version's light flash. Shipped as assets/vault_open_smoke.mp4 ("Smoke & glass cube"). HD possible until 2026-10-17 19:29 UTC. |
 Sounds v2 levelled (2026-10-10): the soft takes were too quiet (user heard only one) → decoded, normalised to −20 dB RMS (peaks ≤ −1 dB), 4 ms fades, saved as mono 44.1 kHz WAV in generated/sounds/normalized/ and shipped as assets/sounds/*.wav. Default tick = take 2.
-| originals/wheel_open_user.m4a | The user's own recording (made with Hold to record on their Fold, 2026-10-10), pulled unchanged. Shipped as assets/sounds/drawer_4.m4a: built-in take 4 for "Wheel opens", the default. |
+| originals/wheel_open_user.m4a | The user's own recording (made with Hold to record on their Fold, 2026-10-10), pulled unchanged. Was shipped as drawer_4.m4a (default "Wheel opens"); taken out of the app 2026-10-12 at the user's request. "Wheel opens" default is take 1 again. |
 
 ## App icon (2026-10-10)
 generated/icon/icon_option_1..4.png: Nano Banana Pro, refs = alien_green + glass_tile (300 credits). User picked 1.

@@ -23,7 +23,7 @@ object Sounds {
     // The takes are levelled to the same loudness (art/generated/sounds/normalized); these are starting volumes.
     private val DEFAULT_VOLUME = mapOf("tick" to 0.25f, "ring" to 0.25f, "open" to 0.25f, "drawer" to 0.25f)
     /** Take used until the user picks one: the set the user chose on their phone (2026-10-10). */
-    fun defaultPick(kind: String) = when (kind) { "ring" -> 3; "drawer" -> 4; else -> 1 }
+    fun defaultPick(kind: String) = when (kind) { "ring" -> 3; else -> 1 }
 
     /** Built-in takes for a sound: 1–3 generated, plus 4 where the user gave one (Wheel opens). */
     fun takes(kind: String): List<Int> = (1..4).filter { "${kind}_$it" in ids }
