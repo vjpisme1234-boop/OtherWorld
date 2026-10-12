@@ -122,6 +122,8 @@ class HomeActivity : ComponentActivity() {
             }
             var editingWidget by remember { mutableStateOf<Int?>(null) }
             var wheelJump by remember { mutableStateOf<Pair<Int, Long>?>(null) }
+            // Typed in the wheel's search field; while set, the wheel shows only matching apps (from every ring).
+            var wheelQuery by remember { mutableStateOf("") }
             var ringIndex by remember { mutableIntStateOf(0) }
             var ringListOpen by remember { mutableStateOf(false) }
             var recentOpen by remember { mutableStateOf(false) }
@@ -169,6 +171,7 @@ class HomeActivity : ComponentActivity() {
             }
             // Status bar on home; the wheel drawer is full screen.
             LaunchedEffect(drawerOpen) {
+                if (!drawerOpen) wheelQuery = ""
                 if (drawerOpen) bars.hide(WindowInsetsCompat.Type.systemBars()) else bars.show(WindowInsetsCompat.Type.systemBars())
             }
 
@@ -188,7 +191,7 @@ class HomeActivity : ComponentActivity() {
             BackHandler(editPagesOpen) { editPagesOpen = false }
             BackHandler(settingsOpen) { settingsOpen = false }
             BackHandler(allAppsOpen) { allAppsOpen = false }
-            BackHandler(drawerOpen && !allAppsOpen) { drawerOpen = false }
+            BackHandler(drawerOpen && !allAppsOpen) { if (wheelQuery.isNotEmpty()) wheelQuery = "" else drawerOpen = false }
             BackHandler(editingWidget != null) { editingWidget = null }
 
             // Leaving Other World always shuts the hidden drawer.
@@ -239,12 +242,17 @@ class HomeActivity : ComponentActivity() {
                     val ringName = rings.getOrElse(ringIndex.coerceIn(0, rings.size - 1)) { ALL_RING }
                     val ringApps = remember(appList, ringName, state.ringOf) { state.appsIn(ringName, appList) }
                     val recentApps = remember(apps, state.recent) { state.recent.mapNotNull { apps[it] } }
-                    val panels = remember(ringApps, recentApps, state.iconStyle, unread, state.showDots) {
-                        listOf<Panel>(Panel.Drawer(appList.take(9).map { it.iconFor(state.iconStyle) })) +
+                    val searching = wheelQuery.isNotBlank()
+                    val found = remember(appList, wheelQuery) { com.jp.otherworld.ui.wheel.searchApps(appList, wheelQuery) }
+                    val panels = remember(ringApps, recentApps, state.iconStyle, unread, state.showDots, searching, found) {
+                        if (searching && found.isNotEmpty()) found.map { Panel.App(it, it.iconFor(state.iconStyle), state.showDots && (unread[it.packageName] ?: 0) > 0) }
+                        else listOf<Panel>(Panel.Drawer(appList.take(9).map { it.iconFor(state.iconStyle) })) +
                             (if (recentApps.isNotEmpty()) listOf(Panel.Recent(recentApps.map { it.iconFor(state.iconStyle) })) else emptyList()) +
                             ringApps.map { Panel.App(it, it.iconFor(state.iconStyle), state.showDots && (unread[it.packageName] ?: 0) > 0) }
                     }
                     val firstApp = panels.size - ringApps.size
+                    // Each new letter typed: spin to the best match.
+                    LaunchedEffect(found) { if (found.isNotEmpty()) wheelJump = 0 to System.nanoTime() }
                     val ringLetters = remember(ringApps) { letterIndex(ringApps) }
                     LaunchedEffect(Unit) { Sounds.play("drawer") }
                     fun switchRing(by: Int) {
@@ -271,7 +279,7 @@ class HomeActivity : ComponentActivity() {
                             wheelArt, panels,
                             active = drawerOpen && !allAppsOpen,
                             jumpTo = wheelJump,
-                            ringKey = ringName,
+                            ringKey = if (searching) "search" else ringName,
                             center = state.wheelCenter,
                             onLongPress = { p -> (p as? Panel.App)?.let { appMenu = AppMenuTarget(it.app, AppSource.Drawer) } }
                         ) { panel ->
@@ -292,8 +300,16 @@ class HomeActivity : ComponentActivity() {
                             GlassLabel(ringName, 17.sp, GlassCyan)
                             GlassLabel("  ›", 16.sp, GlassDim)
                         }
+                        // Search: type an app's name; Search on the keyboard opens the best match.
+                        com.jp.otherworld.ui.wheel.WheelSearch(
+                            wheelQuery, { wheelQuery = it },
+                            onGo = { found.firstOrNull()?.let { launchApp(context, it.packageName); drawerOpen = false } },
+                            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp).fillMaxWidth(0.84f)
+                        )
+                        if (searching && found.isEmpty()) GlassLabel("No apps match “${wheelQuery.trim()}”", 15.sp, GlassDim,
+                            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 136.dp))
                         // A–Z: slide to spin the wheel to that letter (within this ring).
-                        AlphabetBar(
+                        if (!searching) AlphabetBar(
                             ringLetters.keys,
                             onLetter = { l -> ringLetters[l]?.let { wheelJump = (it + firstApp) to System.nanoTime() } },
                             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 18.dp).fillMaxWidth()
