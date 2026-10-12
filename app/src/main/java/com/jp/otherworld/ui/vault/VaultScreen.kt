@@ -212,19 +212,19 @@ fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitma
                 if (tab == Tab.Numbers) {
                     if (vault.numbers.isEmpty()) Empty("No numbers yet") else
                         // Centred in the cube: a few rows sit in the middle; many fill it and scroll.
-                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically), contentPadding = PaddingValues(4.dp)) {
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(4.dp)) {
                             items(vault.numbers, key = { it.id }) { n ->
                                 Row(
-                                    Modifier.fillMaxWidth().glass(RoundedCornerShape(12.dp))
+                                    Modifier.fillParentMaxWidth(0.9f).glass(RoundedCornerShape(10.dp))
                                         .combinedClickable(onLongClick = { numberMenu = n }) { numberMenu = n }
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        .padding(horizontal = 10.dp, vertical = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     // One line each: on narrow cubes the name shortens with "…" instead of wrapping.
                                     BasicText(n.name.ifBlank { "No name" }, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                        style = TextStyle(color = GlassText, fontSize = 15.sp))
-                                    Spacer(Modifier.width(8.dp))
-                                    BasicText(n.number, maxLines = 1, softWrap = false, style = TextStyle(color = GlassCyan, fontSize = 14.sp))
+                                        style = TextStyle(color = GlassText, fontSize = 13.sp))
+                                    Spacer(Modifier.width(6.dp))
+                                    BasicText(n.number, maxLines = 1, softWrap = false, style = TextStyle(color = GlassCyan, fontSize = 12.sp))
                                 }
                             }
                         }
