@@ -112,7 +112,7 @@ const val VAULT_TOP_DP = 175f; const val VAULT_BOTTOM_DP = 90f
  * A colour filter turning the cyan alien into the colour of the alien wallpaper that's set (same hue
  * shifts the coloured copies were made with; whites stay white). Null for cyan or any other wallpaper.
  */
-private fun alienTint(context: android.content.Context): android.graphics.ColorMatrix? {
+internal fun alienTint(context: android.content.Context): android.graphics.ColorMatrix? {
     val service = runCatching { android.app.WallpaperManager.getInstance(context).wallpaperInfo?.serviceName }.getOrNull() ?: return null
     if (!service.startsWith("com.jp.otherworld.wallpaper.Alien")) return null
     val name = service.substringAfterLast('.')

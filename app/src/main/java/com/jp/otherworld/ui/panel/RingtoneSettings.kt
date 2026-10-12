@@ -43,11 +43,13 @@ fun RingtoneSettings() {
                 if (waitingForPermission && Ringtone.canSet(context)) { waitingForPermission = false; set() }
                 current = Ringtone.isCurrent(context)
             }
-            if (e == Lifecycle.Event.ON_PAUSE && Ringtone.stop()) playing = false
+            if (e == Lifecycle.Event.ON_PAUSE) playing = false
         }
         lifecycle.addObserver(obs)
-        onDispose { lifecycle.removeObserver(obs); Ringtone.stop() }
+        onDispose { lifecycle.removeObserver(obs) }
     }
+
+    if (playing) RingtoneVideo { playing = false }
 
     GlassLabel("Ringtone", 18.sp, GlassCyan)
     Column(
@@ -59,10 +61,8 @@ fun RingtoneSettings() {
                 GlassLabel("Radio Control", 16.sp)
                 GlassLabel(if (current) "Your phone's ringtone ✓" else "“We are losing transmission… you have a phone call”", 13.sp, GlassDim)
             }
-            GlassButton(if (playing) "Stop" else "Play", selected = playing) {
-                playing = !playing
-                Ringtone.togglePreview(context) { playing = false }
-            }
+            // Play: the alien says it (video with the ringtone's sound).
+            GlassButton("Play", selected = playing) { playing = true }
         }
         GlassButton(if (current) "Set again" else "Set as phone ringtone", selected = !current, modifier = Modifier.fillMaxWidth()) { set() }
         GlassLabel("Also added to your phone's ringtone list, so you can pick it for a contact in Settings.", 12.sp, GlassDim)

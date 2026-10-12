@@ -3,7 +3,6 @@ package com.jp.otherworld.data
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
 import android.provider.MediaStore
@@ -17,27 +16,6 @@ import android.provider.Settings
 object Ringtone {
     private const val ASSET = "ringtone_radio_control.mp3"
     private const val NAME = "Other World - Radio Control.mp3"
-    private var player: MediaPlayer? = null
-
-    val playing get() = player?.isPlaying == true
-
-    /** Plays it once (or stops it if it's already playing). */
-    fun togglePreview(context: Context, onDone: () -> Unit) {
-        if (stop()) { onDone(); return }
-        player = MediaPlayer().apply {
-            context.assets.openFd(ASSET).use { setDataSource(it.fileDescriptor, it.startOffset, it.length) }
-            setOnCompletionListener { stop(); onDone() }
-            prepare(); start()
-        }
-    }
-
-    /** Stops the preview; true if one was playing. */
-    fun stop(): Boolean {
-        val p = player ?: return false
-        runCatching { p.stop() }; p.release(); player = null
-        return true
-    }
-
     fun canSet(context: Context) = Settings.System.canWrite(context)
 
     /** Opens Android's "Modify system settings" page for Other World. */
