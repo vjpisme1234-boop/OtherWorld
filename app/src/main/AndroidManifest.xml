@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Only when the user records their own wheel sound (asked at that moment). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Talk along: read the phone's output loudness (Visualizer on the output mix). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Only to make the Radio Control ringtone the phone's ringtone, when the user taps Set (allowed in Settings). -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" xmlns:tools="http://schemas.android.com/tools" tools:ignore="ProtectedPermissions" />

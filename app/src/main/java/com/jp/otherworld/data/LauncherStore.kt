@@ -88,6 +88,8 @@ data class LauncherState(
     // ── Alien wallpaper ──
     /** New notifications make the alien's halo pulse in a colour. */
     val notifGlow: Boolean = true,
+    /** Test: the alien's lips move with whatever sound the phone plays (needs the microphone permission). */
+    val alienTalks: Boolean = false,
     /** Per-app glow colour (ARGB); [GLOW_OFF] = never glow for that app. Apps not listed use their type's colour. */
     val glowColors: Map<String, Int> = emptyMap(),
     /** Night mode: alien dims, eyes half shut. Times are minutes after midnight. */
@@ -237,6 +239,7 @@ object LauncherStore {
         put("globeOffered", s.globeOffered)
         put("secretHintDeleted", s.secretHintDeleted)
         put("notifGlow", s.notifGlow)
+        put("alienTalks", s.alienTalks)
         put("glowColors", JSONObject().apply { s.glowColors.forEach { (k, v) -> put(k, v) } })
         put("nightOn", s.nightOn)
         put("nightStart", s.nightStart)
@@ -286,6 +289,7 @@ object LauncherStore {
             globeOffered = o.optBoolean("globeOffered", false),
             secretHintDeleted = o.optBoolean("secretHintDeleted", false),
             notifGlow = o.optBoolean("notifGlow", true),
+            alienTalks = o.optBoolean("alienTalks", false),
             glowColors = o.optJSONObject("glowColors")?.let { g -> g.keys().asSequence().associateWith { g.getInt(it) } }.orEmpty(),
             nightOn = o.optBoolean("nightOn", true),
             nightStart = o.optInt("nightStart", 22 * 60),

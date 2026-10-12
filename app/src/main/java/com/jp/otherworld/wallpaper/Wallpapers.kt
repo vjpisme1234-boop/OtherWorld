@@ -203,6 +203,9 @@ open class AlienWallpaperService : WallpaperService() {
             Bitmap.createScaledBitmap(alien, alien.width / 12, alien.height / 12, true), alien.width, alien.height, true
         )
         private val eyes = EyeLids(alien, seam)
+        // Talk along (test): lips move with the phone's sound.
+        private val mouth = Mouth(alien, seam)
+        private val talk = TalkListener()
         // Breaking apart for the hidden drawer, built the first time each style is used.
         private val shatters = HashMap<ShatterStyle, Shatter>()
         private fun shatter(style: ShatterStyle) = shatters.getOrPut(style) { Shatter(alien, style, eyes.centers) }
@@ -281,13 +284,14 @@ open class AlienWallpaperService : WallpaperService() {
                 sensors?.unregisterListener(this)
                 runCatching { unregisterReceiver(batteryWatch) }
                 haveRest = false
+                talk.stop()
             }
         }
 
         override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = draw()
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
-            visible = false; handler.removeCallbacks(frame); sensors?.unregisterListener(this)
+            visible = false; handler.removeCallbacks(frame); sensors?.unregisterListener(this); talk.stop()
             runCatching { unregisterReceiver(batteryWatch) }
         }
 
@@ -389,6 +393,8 @@ open class AlienWallpaperService : WallpaperService() {
                 // At night the eyes rest half shut, and blinks close them the rest of the way.
                 val blink = blinkAmount(now)
                 eyes.draw(c, 0f, 0f, night * 0.5f + blink * (1f - night * 0.5f), paint)
+                if (com.jp.otherworld.data.LauncherStore.state.value.alienTalks && talk.start(applicationContext)) mouth.draw(c, talk.open())
+                else talk.stop()
                 c.restoreToCount(save)
                 // Charging: a bright band of the halo sweeps up the face every 2.5 s.
                 if (charging) {

@@ -64,6 +64,21 @@ fun AlienSettings(state: LauncherState, apps: Map<String, AppInfo>, onPreviewEff
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         GlassLabel("Works on the animated alien wallpapers. Leaning toward your finger and battery mood are always on.", 13.sp, GlassDim)
+        // Talk along (test)
+        val askMic = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok ->
+            LauncherStore.update { it.copy(alienTalks = ok) }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GlassLabel("Talk along (test)", modifier = Modifier.weight(1f))
+            GlassButton("On", selected = state.alienTalks) {
+                if (context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED)
+                    LauncherStore.update { it.copy(alienTalks = true) }
+                else askMic.launch(android.Manifest.permission.RECORD_AUDIO)
+            }
+            GlassButton("Off", selected = !state.alienTalks) { LauncherStore.update { it.copy(alienTalks = false) } }
+        }
+        GlassLabel("His lips move with any sound your phone plays, like a voice. Android asks for the microphone for this; only the loudness is used, nothing is recorded.", 13.sp, GlassDim)
+
         // Notification glow
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             GlassLabel("Glow on new notifications", modifier = Modifier.weight(1f))
