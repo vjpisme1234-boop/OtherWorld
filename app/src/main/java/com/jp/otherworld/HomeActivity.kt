@@ -378,6 +378,23 @@ class HomeActivity : ComponentActivity() {
                     }
                 }
                 if (wallpaperOpen) WallpaperPicker { wallpaperOpen = false }
+                // After a missed call, the first time home is opened: the alien whispers "you have a phone call".
+                var missedPlaying by remember { mutableStateOf(false) }
+                val missedLife = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
+                DisposableEffect(missedLife) {
+                    com.jp.otherworld.data.MissedCall.init(context)
+                    val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+                        if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME && com.jp.otherworld.data.MissedCall.pending.value) {
+                            val alienSet = runCatching { android.app.WallpaperManager.getInstance(context).wallpaperInfo?.serviceName?.startsWith("com.jp.otherworld.wallpaper.Alien") }.getOrNull() == true
+                            com.jp.otherworld.data.MissedCall.said(context)
+                            if (alienSet && !vaultOpen) missedPlaying = true
+                        }
+                    }
+                    missedLife.addObserver(obs)
+                    onDispose { missedLife.removeObserver(obs) }
+                }
+                if (missedPlaying) com.jp.otherworld.ui.home.MissedCallVideo { missedPlaying = false }
+
                 // Once: offer Talk along (the alien's lips move when an assistant talks); it needs the microphone.
                 val askTalkMic = androidx.activity.compose.rememberLauncherForActivityResult(
                     androidx.activity.result.contract.ActivityResultContracts.RequestPermission()

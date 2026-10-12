@@ -19,6 +19,7 @@ class NotificationWatcher : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         LauncherStore.init(this)
+        com.jp.otherworld.data.MissedCall.init(this)
     }
 
     override fun onListenerConnected() {
@@ -31,6 +32,8 @@ class NotificationWatcher : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val isNew = seen.add(sbn.key)
+        // A missed call: the alien will say so the next time home is opened.
+        if (isNew && sbn.notification.category == Notification.CATEGORY_MISSED_CALL) com.jp.otherworld.data.MissedCall.missed(this)
         recount(runCatching { activeNotifications }.getOrNull().orEmpty())
         // Only brand-new notifications glow, not updates to one already showing.
         if (!isNew || !counts(sbn)) return
