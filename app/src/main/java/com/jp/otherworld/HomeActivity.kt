@@ -378,6 +378,21 @@ class HomeActivity : ComponentActivity() {
                     }
                 }
                 if (wallpaperOpen) WallpaperPicker { wallpaperOpen = false }
+                // Once: offer Talk along (the alien's lips move when an assistant talks); it needs the microphone.
+                val askTalkMic = androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+                ) { ok -> LauncherStore.update { it.copy(talkAsked = true, talkMode = if (ok) it.talkMode else "OFF") } }
+                val alienWallpaper = remember(homePresses, state.globeOffered) {
+                    runCatching { android.app.WallpaperManager.getInstance(context).wallpaperInfo?.serviceName?.startsWith("com.jp.otherworld.wallpaper.Alien") }.getOrNull() == true
+                }
+                if (!state.talkAsked && state.talkMode != "OFF" && alienWallpaper && !vaultOpen && !drawerOpen &&
+                    context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) GlassSheet({ LauncherStore.update { it.copy(talkAsked = true, talkMode = "OFF") } }) {
+                    GlassLabel("Let the alien talk?", 22.sp)
+                    GlassLabel("His lips can move when Claude, Google Assistant, Alexa or Bixby talks. Android needs the microphone permission for this. Only how loud the voice is gets used; nothing is recorded or sent.", 15.sp, GlassDim)
+                    GlassMenuItem("Allow") { askTalkMic.launch(android.Manifest.permission.RECORD_AUDIO) }
+                    GlassMenuItem("Not now") { LauncherStore.update { it.copy(talkAsked = true, talkMode = "OFF") } }
+                }
                 if (homeMenuOpen) HomeMenu(onDismiss = { homeMenuOpen = false }) { action ->
                     homeMenuOpen = false
                     when (action) {

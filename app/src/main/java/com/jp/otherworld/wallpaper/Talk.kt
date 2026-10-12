@@ -13,9 +13,14 @@ import android.graphics.RectF
 import android.media.audiofx.Visualizer
 
 /**
- * "Talk along" (test): the alien's lips part with whatever sound the phone is playing (a voice, music…).
- * Listens to the phone's overall output level only (Android's Visualizer on the output mix); nothing is
- * recorded or kept. Needs the microphone permission because that's how Android guards this.
+ * "Talk along": the alien's lips move with a voice the phone is playing. Listens to the phone's overall
+ * output level only (Android's Visualizer on the output mix); nothing is recorded or kept. Needs the
+ * microphone permission because that's how Android guards this.
+ *
+ * By default only voices count: Android doesn't say which app is playing, but it does say what kind of
+ * sound each player is. Assistants (Google, Bixby) play "assistant", voice chats (Claude live, calls over
+ * the internet) "voice communication", and talking apps (Alexa, read-aloud) "speech". Music and videos
+ * don't move his mouth unless "Any sound" is chosen.
  */
 class TalkListener {
     private var viz: Visualizer? = null
@@ -24,8 +29,12 @@ class TalkListener {
     private val m = Visualizer.MeasurementPeakRms()
     private var fft = ByteArray(0)
 
+    private var audio: android.media.AudioManager? = null
+    private var voiceUntil = 0L; private var checkedAt = 0L
+
     fun start(context: Context): Boolean {
         if (viz != null) return true
+        audio = context.getSystemService(android.media.AudioManager::class.java)
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return false
         viz = runCatching {
             Visualizer(0).apply {
@@ -42,10 +51,29 @@ class TalkListener {
 
     fun stop() { runCatching { viz?.enabled = false; viz?.release() }; viz = null; level = 0f }
 
+    /** Is something playing a voice right now (assistant, voice chat or speech)? Checked a few times a second. */
+    private fun voicePlaying(): Boolean {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - checkedAt > 300) {
+            checkedAt = now
+            val voice = runCatching {
+                audio?.activePlaybackConfigurations.orEmpty().any { cfg ->
+                    val a = cfg.audioAttributes
+                    a.usage == android.media.AudioAttributes.USAGE_ASSISTANT ||
+                        a.usage == android.media.AudioAttributes.USAGE_VOICE_COMMUNICATION ||
+                        a.contentType == android.media.AudioAttributes.CONTENT_TYPE_SPEECH
+                }
+            }.getOrDefault(false)
+            if (voice) voiceUntil = now + 400
+        }
+        return now < voiceUntil
+    }
+
     /** How open the mouth should be now, 0..1 (opens fast, closes a little slower, like speech). */
-    fun open(): Float {
+    fun open(anySound: Boolean = false): Float {
         val v = viz ?: return 0f
-        val target = runCatching {
+        val heard = anySound || voicePlaying()
+        val target = if (!heard) 0f else runCatching {
             v.getMeasurementPeakRms(m)
             // mRms is in millibels: about -9600 (silence) .. 0 (full). Voices sit around -4500..-1500.
             ((m.mRms + 4800f) / 3300f).coerceIn(0f, 1f)

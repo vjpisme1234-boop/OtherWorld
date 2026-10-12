@@ -13,8 +13,6 @@
     <!-- Talk along: read the phone's output loudness (Visualizer on the output mix). -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Only to make the Radio Control ringtone the phone's ringtone, when the user taps Set (allowed in Settings). -->
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" xmlns:tools="http://schemas.android.com/tools" tools:ignore="ProtectedPermissions" />
 
     <!-- A launcher must see every launchable app -->
     <queries>
