@@ -76,7 +76,8 @@ class TalkListener {
         val target = if (!heard) 0f else runCatching {
             v.getMeasurementPeakRms(m)
             // mRms is in millibels: about -9600 (silence) .. 0 (full). Voices sit around -4500..-1500.
-            ((m.mRms + 4800f) / 3300f).coerceIn(0f, 1f)
+            // a square-root curve so normal speech already opens it most of the way
+            Math.sqrt(((m.mRms + 5600f) / 3600f).coerceIn(0f, 1f).toDouble()).toFloat()
         }.getOrDefault(0f)
         level += (target - level) * (if (target > level) 0.55f else 0.35f)
         // Shape: bright sounds (ee, s) pull the mouth wide and flat, dark ones (oo, oh) small and round.
@@ -104,77 +105,89 @@ class TalkListener {
 }
 
 /**
- * The alien's mouth, drawn in image pixels (the canvas is already placed and scaled like the face).
- * Only the lips move, like speech: the skin above the lip line bends up a little and below it bends
- * down more (a smooth mesh warp that fades out before the nose and chin, so nothing else moves), and the
- * dark opening between them closes at the corners. Its width follows the sound (round for oo/oh, wide for ee).
+ * The alien's mouth and jaw, drawn in image pixels (the canvas is already placed and scaled like the face).
+ * Talking: the upper lip lifts a little, the lips part, and the whole lower jaw drops (chin included),
+ * with the cheeks stretching smoothly. Everything above the mouth stays put, so the head never tips.
+ * The opening's width follows the sound (round for oo/oh, wide for ee).
  */
 class Mouth(alien: Bitmap, private val rim: Int) {
     private val w = alien.width.toFloat(); private val h = alien.height.toFloat()
     // The user's alien (originals/alien.png, 521×597): the lips meet at y ≈ 83.75%, centred at x ≈ 51.8%.
-    private val cx = w * 0.518f; private val lipY = h * 0.8375f; private val half = w * 0.088f
-    private val maxDown = h * 0.018f; private val maxUp = h * 0.006f
-    // The two patches that bend: above and below the lip line.
-    private val left = (cx - half * 1.5f).toInt(); private val right = (cx + half * 1.5f).toInt()
-    private val top = (lipY - h * 0.045f).toInt(); private val mid = lipY.toInt(); private val bottom = (lipY + h * 0.07f).toInt()
-    private val upper = Bitmap.createBitmap(alien, left, top, right - left, mid - top)
-    private val lower = Bitmap.createBitmap(alien, left, mid, right - left, bottom - mid)
-    private val cols = 24; private val rowsU = 6; private val rowsL = 8
-    private val vu = FloatArray((cols + 1) * (rowsU + 1) * 2)
-    private val vl = FloatArray((cols + 1) * (rowsL + 1) * 2)
+    private val cx = w * 0.518f; private val lipY = h * 0.8375f; private val half = w * 0.10f
+    private val maxLips = h * 0.032f     // extra parting of the lips
+    private val maxJaw = h * 0.030f      // whole lower jaw drop
+    private val maxUp = h * 0.012f
+    // Above the lips: a narrow patch whose bend fades out before the nose.
+    private val uLeft = (cx - half * 1.5f).toInt(); private val uRight = (cx + half * 1.5f).toInt()
+    private val uTop = (lipY - h * 0.055f).toInt(); private val mid = lipY.toInt()
+    // Below the lips: the whole lower face down to the bottom of the picture (the jaw), fading to still at its sides.
+    private val jawHalf = w * 0.32f
+    private val lLeft = (cx - jawHalf).toInt().coerceAtLeast(0); private val lRight = (cx + jawHalf).toInt().coerceAtMost(alien.width)
+    private val lBottom = alien.height
+    private val upper = Bitmap.createBitmap(alien, uLeft, uTop, uRight - uLeft, mid - uTop)
+    private val lower = Bitmap.createBitmap(alien, lLeft, mid, lRight - lLeft, lBottom - mid)
+    private val colsU = 28; private val rowsU = 8; private val colsL = 40; private val rowsL = 18
+    private val vu = FloatArray((colsU + 1) * (rowsU + 1) * 2)
+    private val vl = FloatArray((colsL + 1) * (rowsL + 1) * 2)
     private val hole = Path()
     private val inside = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(245, 2, 6, 10) }
     private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = rim; alpha = 110 }
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
 
-    // 1 in the middle of the mouth, easing to 0 at its corners.
+    // 1 in the middle, easing to 0 at ±span.
     private fun bell(x: Float, span: Float): Float {
         val d = (x - cx) / span
         if (d <= -1f || d >= 1f) return 0f
         val c = Math.cos(d * Math.PI / 2).toFloat(); return c * c
     }
 
+    /** How far the lower face moves down at x, `u` of the way from the lip line (0) to the picture's bottom (1). */
+    private fun drop(x: Float, u: Float, span: Float, lips: Float, jaw: Float): Float {
+        val lipPart = lips * bell(x, span) * (1f - u) * (1f - u)
+        // The jaw drops as one piece across its width; right at the lip line it only moves inside the mouth,
+        // so the corners stay closed, and it eases in going down.
+        val ease = (u / 0.35f).coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
+        val jawPart = jaw * bell(x, jawHalf) * maxOf(bell(x, span * 1.15f), ease)
+        return lipPart + jawPart
+    }
+
     fun draw(c: Canvas, open: Float, wide: Float) {
         if (open < 0.03f) return
-        // Round sounds: narrower but a bit taller; wide sounds: wider and flatter.
-        val span = half * (0.7f + 0.35f * wide)
-        val down = maxDown * open * (1.15f - 0.35f * wide)
+        val span = half * (0.75f + 0.3f * wide)
+        val lips = maxLips * open * (1.15f - 0.35f * wide)
+        val jaw = maxJaw * open
         val up = maxUp * open
-        val pw = (right - left).toFloat()
         var i = 0
+        val uw = (uRight - uLeft).toFloat()
         for (r in 0..rowsU) {
-            val t = r / rowsU.toFloat()                       // 0 at the top edge (still) → 1 at the lip line
-            val y0 = top + (mid - top) * t
-            for (k in 0..cols) {
-                val x = left + pw * k / cols
-                vu[i++] = x; vu[i++] = y0 - up * bell(x, span) * t * t
-            }
+            val t = r / rowsU.toFloat()
+            val y0 = uTop + (mid - uTop) * t
+            for (k in 0..colsU) { val x = uLeft + uw * k / colsU; vu[i++] = x; vu[i++] = y0 - up * bell(x, span) * t * t }
         }
         i = 0
+        val lw = (lRight - lLeft).toFloat()
         for (r in 0..rowsL) {
-            val t = 1f - r / rowsL.toFloat()                  // 1 at the lip line → 0 at the bottom edge (still)
-            val y0 = mid + (bottom - mid) * (r / rowsL.toFloat())
-            for (k in 0..cols) {
-                val x = left + pw * k / cols
-                vl[i++] = x; vl[i++] = y0 + down * bell(x, span) * t * t
-            }
+            val u = r / rowsL.toFloat()
+            val y0 = mid + (lBottom - mid) * u
+            for (k in 0..colsL) { val x = lLeft + lw * k / colsL; vl[i++] = x; vl[i++] = y0 + drop(x, u, span, lips, jaw) }
         }
-        // The opening first (it shows through the gap the bent lips leave), then the lips over it.
+        // The opening (shows through the gap the parted lips leave), then the lips and jaw over it.
+        val holeSpan = span * 1.15f
         hole.reset()
-        val steps = 24
+        val steps = 28
         for (s in 0..steps) {
-            val x = cx - span + 2 * span * s / steps
+            val x = cx - holeSpan + 2 * holeSpan * s / steps
             val y = lipY - up * bell(x, span)
             if (s == 0) hole.moveTo(x, y) else hole.lineTo(x, y)
         }
         for (s in steps downTo 0) {
-            val x = cx - span + 2 * span * s / steps
-            hole.lineTo(x, lipY + down * bell(x, span))
+            val x = cx - holeSpan + 2 * holeSpan * s / steps
+            hole.lineTo(x, lipY + drop(x, 0f, span, lips, jaw))
         }
         hole.close()
         c.drawPath(hole, inside)
-        c.drawBitmapMesh(upper, cols, rowsU, vu, 0, null, 0, paint)
-        c.drawBitmapMesh(lower, cols, rowsL, vl, 0, null, 0, paint)
+        c.drawBitmapMesh(lower, colsL, rowsL, vl, 0, null, 0, paint)
+        c.drawBitmapMesh(upper, colsU, rowsU, vu, 0, null, 0, paint)
         rimPaint.strokeWidth = (h * 0.002f).coerceAtLeast(1f)
         c.drawPath(hole, rimPaint)
     }
