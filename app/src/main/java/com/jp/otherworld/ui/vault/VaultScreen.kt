@@ -328,7 +328,7 @@ private fun NoteEditor(note: VaultNote, onDone: () -> Unit) {
 
 // The glass cube (assets/vault_cube.png, 960×1708: last frame of the smoke film): inside its front glass, as fractions.
 private const val CASE_IMG_W = 960; private const val CASE_IMG_H = 1708
-private const val CASE_L = 0.22f; private const val CASE_R = 0.78f
+private const val CASE_L = 0.25f; private const val CASE_R = 0.81f
 private const val CASE_T = 0.46f; private const val CASE_B = 0.755f
 
 @Composable
