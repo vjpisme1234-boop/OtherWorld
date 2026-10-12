@@ -138,7 +138,8 @@ fun GlassWheel(
             when {
                 center == "EARTH" || mars.isEmpty() -> emptyList<String>() to frames("globe")
                 center == "MARS" -> emptyList<String>() to mars
-                else -> frames("morph") to mars
+                // Earth spins ~2 s first (the globe loop's last 60 frames lead straight into the morph's first frame).
+                else -> (frames("globe").takeLast(60) + frames("morph")) to mars
             }
         }
         if (loop.isEmpty()) return@LaunchedEffect
