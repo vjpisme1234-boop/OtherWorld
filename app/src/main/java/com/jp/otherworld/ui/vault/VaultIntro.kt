@@ -31,7 +31,8 @@ fun VaultIntro(asset: String = "vault_open.mp4", onFirstFrame: () -> Unit = {}, 
     LaunchedEffect(firstFrame) { if (firstFrame) { shown(); fade.animateTo(1f, tween(200)) } }
     val finished by rememberUpdatedState(onFinished)
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
-    DisposableEffect(Unit) { onDispose { player?.release(); player = null } }
+    var enhancer by remember { mutableStateOf<android.media.audiofx.LoudnessEnhancer?>(null) }
+    DisposableEffect(Unit) { onDispose { runCatching { enhancer?.release() }; enhancer = null; player?.release(); player = null } }
 
     // Black behind the film: on wide screens it doesn't fill the sides.
     Box(Modifier.fillMaxSize().alpha(fade.value).background(Color.Black)) {
@@ -57,6 +58,10 @@ fun VaultIntro(asset: String = "vault_open.mp4", onFirstFrame: () -> Unit = {}, 
                                 val loud = com.jp.otherworld.data.LauncherStore.state.value.sounds &&
                                     audio?.ringerMode == android.media.AudioManager.RINGER_MODE_NORMAL
                                 mp.setVolume(if (loud) 1f else 0f, if (loud) 1f else 0f)
+                                // Push the boom past normal full volume (+8 dB) so the explosion is really loud.
+                                if (loud) runCatching {
+                                    enhancer = android.media.audiofx.LoudnessEnhancer(mp.audioSessionId).apply { setTargetGain(800); enabled = true }
+                                }
                                 mp.setOnPreparedListener { it.start() }
                                 mp.prepareAsync()
                             }.isSuccess
