@@ -393,7 +393,7 @@ open class AlienWallpaperService : WallpaperService() {
                 // At night the eyes rest half shut, and blinks close them the rest of the way.
                 val blink = blinkAmount(now)
                 eyes.draw(c, 0f, 0f, night * 0.5f + blink * (1f - night * 0.5f), paint)
-                if (com.jp.otherworld.data.LauncherStore.state.value.alienTalks && talk.start(applicationContext)) mouth.draw(c, talk.open())
+                if (com.jp.otherworld.data.LauncherStore.state.value.alienTalks && talk.start(applicationContext)) mouth.draw(c, talk.open(), talk.width())
                 else talk.stop()
                 c.restoreToCount(save)
                 // Charging: a bright band of the halo sweeps up the face every 2.5 s.

@@ -20,7 +20,9 @@ import android.media.audiofx.Visualizer
 class TalkListener {
     private var viz: Visualizer? = null
     private var level = 0f
+    private var wide = 0.5f
     private val m = Visualizer.MeasurementPeakRms()
+    private var fft = ByteArray(0)
 
     fun start(context: Context): Boolean {
         if (viz != null) return true
@@ -28,12 +30,13 @@ class TalkListener {
         viz = runCatching {
             Visualizer(0).apply {
                 enabled = false
-                captureSize = Visualizer.getCaptureSizeRange()[0]
+                captureSize = 256
                 measurementMode = Visualizer.MEASUREMENT_MODE_PEAK_RMS
                 scalingMode = Visualizer.SCALING_MODE_AS_PLAYED
                 enabled = true
             }
         }.onFailure { android.util.Log.w("OWTalk", "Visualizer unavailable: $it") }.getOrNull()
+        fft = ByteArray(viz?.captureSize ?: 0)
         return viz != null
     }
 
@@ -47,43 +50,104 @@ class TalkListener {
             // mRms is in millibels: about -9600 (silence) .. 0 (full). Voices sit around -4500..-1500.
             ((m.mRms + 4800f) / 3300f).coerceIn(0f, 1f)
         }.getOrDefault(0f)
-        level += (target - level) * (if (target > level) 0.6f else 0.3f)
+        level += (target - level) * (if (target > level) 0.55f else 0.35f)
+        // Shape: bright sounds (ee, s) pull the mouth wide and flat, dark ones (oo, oh) small and round.
+        runCatching {
+            if (fft.isNotEmpty() && v.getFft(fft) == Visualizer.SUCCESS) {
+                val rate = v.samplingRate / 1000f    // samplingRate is in milliHz
+                val bins = fft.size / 2
+                fun band(lo: Float, hi: Float): Float {
+                    var e = 0f
+                    for (k in 1 until bins) {
+                        val f = k * rate / 2f / bins
+                        if (f in lo..hi) { val re = fft[2 * k].toFloat(); val im = fft[2 * k + 1].toFloat(); e += re * re + im * im }
+                    }
+                    return e
+                }
+                val low = band(150f, 900f); val high = band(1800f, 6000f)
+                if (low + high > 50f) wide += ((high / (low + high)).coerceIn(0f, 1f) - wide) * 0.25f
+            }
+        }
         return level
     }
+
+    /** 0 = round (oo), 1 = wide (ee). */
+    fun width(): Float = wide
 }
 
 /**
  * The alien's mouth, drawn in image pixels (the canvas is already placed and scaled like the face).
- * Opening: the lower lip and chin slide down and a dark gap with a glowing rim shows between the lips.
+ * Only the lips move, like speech: the skin above the lip line bends up a little and below it bends
+ * down more (a smooth mesh warp that fades out before the nose and chin, so nothing else moves), and the
+ * dark opening between them closes at the corners. Its width follows the sound (round for oo/oh, wide for ee).
  */
-class Mouth(private val alien: Bitmap, private val rim: Int) {
+class Mouth(alien: Bitmap, private val rim: Int) {
     private val w = alien.width.toFloat(); private val h = alien.height.toFloat()
-    // The user's alien (originals/alien.png, 521×597): lips meet at y ≈ 84%, centred at x ≈ 52%.
-    private val cx = w * 0.518f; private val lipY = h * 0.841f; private val half = w * 0.088f
-    private val maxGap = h * 0.024f
-    private val chin = h * 0.06f
-    private val src = Rect((cx - half).toInt(), lipY.toInt(), (cx + half).toInt(), (lipY + chin).toInt())
-    private val dst = RectF()
-    private val clip = Path()
-    private val inside = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(240, 2, 6, 10) }
-    private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = rim; alpha = 150 }
+    // The user's alien (originals/alien.png, 521×597): the lips meet at y ≈ 83.75%, centred at x ≈ 51.8%.
+    private val cx = w * 0.518f; private val lipY = h * 0.8375f; private val half = w * 0.088f
+    private val maxDown = h * 0.018f; private val maxUp = h * 0.006f
+    // The two patches that bend: above and below the lip line.
+    private val left = (cx - half * 1.5f).toInt(); private val right = (cx + half * 1.5f).toInt()
+    private val top = (lipY - h * 0.045f).toInt(); private val mid = lipY.toInt(); private val bottom = (lipY + h * 0.07f).toInt()
+    private val upper = Bitmap.createBitmap(alien, left, top, right - left, mid - top)
+    private val lower = Bitmap.createBitmap(alien, left, mid, right - left, bottom - mid)
+    private val cols = 24; private val rowsU = 6; private val rowsL = 8
+    private val vu = FloatArray((cols + 1) * (rowsU + 1) * 2)
+    private val vl = FloatArray((cols + 1) * (rowsL + 1) * 2)
+    private val hole = Path()
+    private val inside = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(245, 2, 6, 10) }
+    private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = rim; alpha = 110 }
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
 
-    fun draw(c: Canvas, open: Float) {
+    // 1 in the middle of the mouth, easing to 0 at its corners.
+    private fun bell(x: Float, span: Float): Float {
+        val d = (x - cx) / span
+        if (d <= -1f || d >= 1f) return 0f
+        val c = Math.cos(d * Math.PI / 2).toFloat(); return c * c
+    }
+
+    fun draw(c: Canvas, open: Float, wide: Float) {
         if (open < 0.03f) return
-        val gap = maxGap * open
-        val save = c.save()
-        // Only inside a lens around the lips, so the edges of the change fade into the mesh.
-        clip.reset(); clip.addOval(RectF(cx - half, lipY - chin * 0.4f, cx + half, lipY + chin + gap), Path.Direction.CW)
-        c.clipPath(clip)
-        // Lower lip + chin, pushed down.
-        dst.set(src.left.toFloat(), lipY + gap, src.right.toFloat(), lipY + chin + gap)
-        c.drawBitmap(alien, src, dst, paint)
-        // The opening between the lips.
-        val o = RectF(cx - half * 0.78f, lipY - gap * 0.15f, cx + half * 0.78f, lipY + gap * 1.05f)
-        c.drawOval(o, inside)
-        rimPaint.strokeWidth = (h * 0.003f).coerceAtLeast(1f)
-        c.drawOval(o, rimPaint)
-        c.restoreToCount(save)
+        // Round sounds: narrower but a bit taller; wide sounds: wider and flatter.
+        val span = half * (0.7f + 0.35f * wide)
+        val down = maxDown * open * (1.15f - 0.35f * wide)
+        val up = maxUp * open
+        val pw = (right - left).toFloat()
+        var i = 0
+        for (r in 0..rowsU) {
+            val t = r / rowsU.toFloat()                       // 0 at the top edge (still) → 1 at the lip line
+            val y0 = top + (mid - top) * t
+            for (k in 0..cols) {
+                val x = left + pw * k / cols
+                vu[i++] = x; vu[i++] = y0 - up * bell(x, span) * t * t
+            }
+        }
+        i = 0
+        for (r in 0..rowsL) {
+            val t = 1f - r / rowsL.toFloat()                  // 1 at the lip line → 0 at the bottom edge (still)
+            val y0 = mid + (bottom - mid) * (r / rowsL.toFloat())
+            for (k in 0..cols) {
+                val x = left + pw * k / cols
+                vl[i++] = x; vl[i++] = y0 + down * bell(x, span) * t * t
+            }
+        }
+        // The opening first (it shows through the gap the bent lips leave), then the lips over it.
+        hole.reset()
+        val steps = 24
+        for (s in 0..steps) {
+            val x = cx - span + 2 * span * s / steps
+            val y = lipY - up * bell(x, span)
+            if (s == 0) hole.moveTo(x, y) else hole.lineTo(x, y)
+        }
+        for (s in steps downTo 0) {
+            val x = cx - span + 2 * span * s / steps
+            hole.lineTo(x, lipY + down * bell(x, span))
+        }
+        hole.close()
+        c.drawPath(hole, inside)
+        c.drawBitmapMesh(upper, cols, rowsU, vu, 0, null, 0, paint)
+        c.drawBitmapMesh(lower, cols, rowsL, vl, 0, null, 0, paint)
+        rimPaint.strokeWidth = (h * 0.002f).coerceAtLeast(1f)
+        c.drawPath(hole, rimPaint)
     }
 }
