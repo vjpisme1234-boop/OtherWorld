@@ -211,7 +211,8 @@ fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitma
             ) {
                 if (tab == Tab.Numbers) {
                     if (vault.numbers.isEmpty()) Empty("No numbers yet") else
-                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(4.dp)) {
+                        // Centred in the cube: a few rows sit in the middle; many fill it and scroll.
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically), contentPadding = PaddingValues(4.dp)) {
                             items(vault.numbers, key = { it.id }) { n ->
                                 Row(
                                     Modifier.fillMaxWidth().glass(RoundedCornerShape(12.dp))
@@ -229,9 +230,11 @@ fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitma
                         }
                 } else {
                     val hidden = allApps.filter { it.packageName in vault.hiddenApps }
-                    if (hidden.isEmpty()) Empty("No hidden apps yet") else
-                        LazyVerticalGrid(GridCells.Adaptive(68.dp), Modifier.fillMaxSize(), contentPadding = PaddingValues(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (hidden.isEmpty()) Empty("No hidden apps yet") else BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        // Only as many columns as there are apps (up to what fits), so a few sit in the middle.
+                        val cols = minOf(hidden.size, ((maxWidth - 8.dp) / 72.dp).toInt().coerceAtLeast(1))
+                        LazyVerticalGrid(GridCells.Fixed(cols), Modifier.width(72.dp * cols + 8.dp).fillMaxHeight(), contentPadding = PaddingValues(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
                             items(hidden, key = { it.packageName }) { app ->
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -247,6 +250,7 @@ fun VaultScreen(allApps: List<AppInfo>, style: IconStyle, background: ImageBitma
                                 }
                             }
                         }
+                    }
                 }
             }
         }
@@ -324,8 +328,8 @@ private fun NoteEditor(note: VaultNote, onDone: () -> Unit) {
 
 // The glass cube (assets/vault_cube.png, 960×1708: last frame of the smoke film): inside its front glass, as fractions.
 private const val CASE_IMG_W = 960; private const val CASE_IMG_H = 1708
-private const val CASE_L = 0.20f; private const val CASE_R = 0.80f
-private const val CASE_T = 0.445f; private const val CASE_B = 0.77f
+private const val CASE_L = 0.22f; private const val CASE_R = 0.78f
+private const val CASE_T = 0.46f; private const val CASE_B = 0.755f
 
 @Composable
 private fun Empty(text: String) {
