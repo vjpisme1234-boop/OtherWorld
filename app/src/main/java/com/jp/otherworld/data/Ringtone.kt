@@ -48,7 +48,10 @@ object Ringtone {
 
     /** Copies it into Ringtones (once) and sets it as the phone's ringtone. Returns false if that failed. */
     fun setAsRingtone(context: Context): Boolean = runCatching {
-        val uri = installed(context) ?: install(context)
+        // Already in Ringtones: refresh its sound (it may be from an older version of the app).
+        val uri = installed(context)?.also { u ->
+            context.contentResolver.openOutputStream(u, "wt")!!.use { out -> context.assets.open(ASSET).use { it.copyTo(out) } }
+        } ?: install(context)
         RingtoneManager.setActualDefaultRingtoneUri(context, RingtoneManager.TYPE_RINGTONE, uri)
         true
     }.getOrDefault(false)
