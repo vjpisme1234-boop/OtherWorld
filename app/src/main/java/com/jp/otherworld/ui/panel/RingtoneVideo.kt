@@ -18,8 +18,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.jp.otherworld.ui.vault.alienTint
 
 /**
- * The ringtone played by the alien (assets/ringtone_alien.mp4): he waits through "we are losing
- * transmission", whispers "you have a phone call", then smirks. Full screen, whole face shown, tinted to
+ * The ringtone played by the alien (assets/ringtone_alien.mp4): he whispers "you have a phone call",
+ * then smirks. Full screen, whole face shown, tinted to
  * the alien wallpaper's colour. Tap or Back to stop; closes by itself at the end.
  */
 @Composable

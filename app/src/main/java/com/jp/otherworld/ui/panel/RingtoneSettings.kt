@@ -59,7 +59,7 @@ fun RingtoneSettings() {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(Modifier.weight(1f)) {
                 GlassLabel("Radio Control", 16.sp)
-                GlassLabel(if (current) "Your phone's ringtone ✓" else "“We are losing transmission… you have a phone call”", 13.sp, GlassDim)
+                GlassLabel(if (current) "Your phone's ringtone ✓" else "“I was just trying to tell you… you have a phone call”", 13.sp, GlassDim)
             }
             // Play: the alien says it (video with the ringtone's sound).
             GlassButton("Play", selected = playing) { playing = true }
