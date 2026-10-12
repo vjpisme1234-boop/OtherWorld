@@ -29,7 +29,7 @@ import com.jp.otherworld.ui.common.GlassLabel
 import com.jp.otherworld.ui.common.GlassMenuItem
 import com.jp.otherworld.ui.common.GlassSheet
 
-enum class HomeAction { Wallpaper, Widgets, Settings, EditPages }
+enum class HomeAction { Wallpaper, Widgets, Settings, EditPages, MoveDock, MoveDots }
 
 /** Long-press on empty home. */
 @Composable
@@ -40,6 +40,8 @@ fun HomeMenu(onDismiss: () -> Unit, onAction: (HomeAction) -> Unit) {
         GlassMenuItem("Widgets") { onAction(HomeAction.Widgets) }
         GlassMenuItem("Home settings") { onAction(HomeAction.Settings) }
         GlassMenuItem("Edit pages") { onAction(HomeAction.EditPages) }
+        GlassMenuItem("Move dock") { onAction(HomeAction.MoveDock) }
+        GlassMenuItem("Move page dots") { onAction(HomeAction.MoveDots) }
     }
 }
 

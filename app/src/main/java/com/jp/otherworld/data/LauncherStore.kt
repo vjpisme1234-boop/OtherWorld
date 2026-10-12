@@ -101,6 +101,9 @@ data class LauncherState(
     // ── Home ──
     /** Glowing dots on icons of apps with unread notifications. */
     val showDots: Boolean = true,
+    /** How far the dock and the page dots have been moved up from the bottom (dp). */
+    val dockLift: Float = 0f,
+    val dotsLift: Float = 0f,
     /** Gestures on empty home. */
     val doubleTapLock: Boolean = true,
     val swipeDownNotifications: Boolean = true,
@@ -246,6 +249,8 @@ object LauncherStore {
         put("nightEnd", s.nightEnd)
         put("vaultEffect", s.vaultEffect)
         put("showDots", s.showDots)
+        put("dockLift", s.dockLift.toDouble())
+        put("dotsLift", s.dotsLift.toDouble())
         put("doubleTapLock", s.doubleTapLock)
         put("swipeDownNotifications", s.swipeDownNotifications)
         put("twoFingerQuickSettings", s.twoFingerQuickSettings)
@@ -296,6 +301,8 @@ object LauncherStore {
             nightEnd = o.optInt("nightEnd", 7 * 60),
             vaultEffect = o.optString("vaultEffect", "VIDEO_SMOKE"),
             showDots = o.optBoolean("showDots", true),
+            dockLift = o.optDouble("dockLift", 0.0).toFloat(),
+            dotsLift = o.optDouble("dotsLift", 0.0).toFloat(),
             doubleTapLock = o.optBoolean("doubleTapLock", true),
             swipeDownNotifications = o.optBoolean("swipeDownNotifications", true),
             twoFingerQuickSettings = o.optBoolean("twoFingerQuickSettings", true),

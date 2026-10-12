@@ -190,8 +190,62 @@ fun HomeScreen(
                 }
             }
         }
-        PageDots(state.pages.size, pager.currentPage)
-        Dock(state, apps, iconDp, onOpenDrawer, onAppMenu, onEmptyDockSlot)
+        // The page dots and the dock can be moved up (Move dock / Move page dots, or hold the dots).
+        MovableBar(state.dotsLift, editingWidget == EDIT_DOTS, onHold = { onEditWidget(EDIT_DOTS) }, onDone = { onEditWidget(null) },
+            save = { v -> LauncherStore.update { it.copy(dotsLift = v) } }) {
+            PageDots(state.pages.size, pager.currentPage)
+        }
+        MovableBar(state.dockLift, editingWidget == EDIT_DOCK, onHold = null, onDone = { onEditWidget(null) },
+            save = { v -> LauncherStore.update { it.copy(dockLift = v) } }) {
+            Dock(state, apps, iconDp, onOpenDrawer, onAppMenu, onEmptyDockSlot)
+        }
+    }
+}
+
+/** editingWidget values for moving the dock / page dots (real widget ids never reach these). */
+const val EDIT_DOCK = Int.MIN_VALUE
+const val EDIT_DOTS = Int.MIN_VALUE + 1
+
+/**
+ * The dock or the page dots, lifted `lift` dp up from their spot at the bottom. While editing: a cyan
+ * frame you drag up or down, with Reset (back to the bottom) and Done. Not editing: optional hold to start.
+ */
+@Composable
+private fun MovableBar(
+    lift: Float, editing: Boolean, onHold: (() -> Unit)?, onDone: () -> Unit, save: (Float) -> Unit,
+    content: @Composable () -> Unit
+) {
+    val density = LocalDensity.current
+    val maxLift = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp - 170).coerceAtLeast(0).toFloat()
+    var drag by remember { mutableStateOf(0f) }          // dp, while dragging
+    val shown = (lift + drag).coerceIn(0f, maxLift)
+    Box(
+        Modifier
+            .offset { IntOffset(0, -with(density) { shown.dp.roundToPx() }) }
+            .zIndex(if (editing) 6f else 0f)
+            .then(if (onHold != null && !editing) Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { onHold() }) } else Modifier)
+    ) {
+        content()
+        if (editing) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .border(2.dp, GlassCyan, RoundedCornerShape(14.dp))
+                    .background(Color(0x2249A6FF), RoundedCornerShape(14.dp))
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragEnd = { save((lift + drag).coerceIn(0f, maxLift)); drag = 0f }
+                        ) { c, d -> c.consume(); drag -= with(density) { d.toDp().value } }
+                    }
+            )
+            Row(
+                Modifier.align(Alignment.TopCenter).offset(y = (-52).dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                GlassButton("Reset") { drag = 0f; save(0f) }
+                GlassButton("Done", selected = true) { onDone() }
+            }
+        }
     }
 }
 

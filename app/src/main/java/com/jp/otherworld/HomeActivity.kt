@@ -385,6 +385,8 @@ class HomeActivity : ComponentActivity() {
                         HomeAction.Widgets -> widgetsOpen = true
                         HomeAction.Settings -> settingsOpen = true
                         HomeAction.EditPages -> editPagesOpen = true
+                        HomeAction.MoveDock -> editingWidget = com.jp.otherworld.ui.home.EDIT_DOCK
+                        HomeAction.MoveDots -> editingWidget = com.jp.otherworld.ui.home.EDIT_DOTS
                     }
                 }
                 folderOf(openFolder)?.let { f ->
