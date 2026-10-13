@@ -203,6 +203,8 @@ open class AlienWallpaperService : WallpaperService() {
     open val brainStrength = 1f
     /** The brain picture is fitted in the face's own coordinates, so it moves down with the face. */
     open val brainWithFace = false
+    /** How strong the soft halo around the head is (1 = normal). */
+    open val haloStrength = 1f
     override fun onCreateEngine(): Engine = AlienEngine()
 
     private inner class AlienEngine : Engine(), android.hardware.SensorEventListener {
@@ -403,7 +405,7 @@ open class AlienWallpaperService : WallpaperService() {
                 val g = 1.12f
                 // Hidden drawer: 0 = whole face, 1 = broken apart and gone.
                 val gone = com.jp.otherworld.data.AlienSignals.shatterProgress(now)
-                glowPaint.alpha = ((90 + 120 * pulse) * mood * (1f - gone)).toInt()
+                glowPaint.alpha = ((90 + 120 * pulse) * haloStrength * mood * (1f - gone)).toInt()
                 // The halo lags the face slightly, which reads as depth when tilting.
                 val hl = l - moveX * 0.4f; val ht = top - moveY * 0.4f
                 val haloRect = RectF(hl - aw * (g - 1) / 2, ht - ah * (g - 1) / 2, hl + aw * (1 + (g - 1) / 2), ht + ah * (1 + (g - 1) / 2))
@@ -548,6 +550,7 @@ class AlienClearWallpaperService : AlienWallpaperService() {
     override val faceDrop = CLEAR_FACE_DROP
     override val brainStrength = 0.6f
     override val brainWithFace = true
+    override val haloStrength = 0.25f
 }
 
 /** White (ice) alien with the user's brain (art/originals/brain.svg) glowing inside the skull. */
