@@ -111,18 +111,18 @@ class TalkListener {
  * moves like in the video, but skip ahead to frames whose mouth matches how loud the voice is right now.
  * When the voice stops the frames fade back to the normal face.
  */
-class TalkFace(private val assets: android.content.res.AssetManager, asset: String, private val dir: String = "talkface") {
+class TalkFace(private val assets: android.content.res.AssetManager, asset: String, private val framesDir: String = "talkface") {
     private val count: Int
     private val fps: Float
     private val openOf: FloatArray
     init {
-        val meta = org.json.JSONObject(assets.open("$dir/talkface.json").bufferedReader().use { it.readText() })
+        val meta = org.json.JSONObject(assets.open("$framesDir/talkface.json").bufferedReader().use { it.readText() })
         count = meta.getInt("count"); fps = meta.getDouble("fps").toFloat()
         val arr = meta.getJSONArray("open"); openOf = FloatArray(count) { arr.getDouble(it).toFloat() }
     }
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
         // Frames made from this alien itself are already the right colour.
-        if (dir == "talkface") Mouth.tint(asset)?.let { colorFilter = android.graphics.ColorMatrixColorFilter(it) }
+        if (framesDir == "talkface") Mouth.tint(asset)?.let { colorFilter = android.graphics.ColorMatrixColorFilter(it) }
     }
     private val cache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
         override fun removeEldestEntry(e: MutableMap.MutableEntry<Int, Bitmap>?) = size > 10
@@ -133,7 +133,7 @@ class TalkFace(private val assets: android.content.res.AssetManager, asset: Stri
     private var fullW = 0; private var fullH = 0
     private fun frame(i: Int): Bitmap? = cache[i] ?: runCatching {
         val t0 = android.os.SystemClock.uptimeMillis()
-        val b = assets.open("$dir/f%03d.webp".format(i)).use {
+        val b = assets.open("$framesDir/f%03d.webp".format(i)).use {
             android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
         }
         if (b != null && sample == 1) { fullW = b.width; fullH = b.height }
