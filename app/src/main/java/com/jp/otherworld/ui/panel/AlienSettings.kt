@@ -71,7 +71,7 @@ fun AlienSettings(state: LauncherState, apps: Map<String, AppInfo>, onPreviewEff
         val micOk = context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
         GlassLabel("Talk along", modifier = Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("ASSISTANT" to "Assistants", "ANY" to "Any sound", "OFF" to "Off").forEach { (k, name) ->
+            listOf("ASSISTANT" to "Voices", "ANY" to "All sound", "OFF" to "Off").forEach { (k, name) ->
                 GlassButton(name, Modifier.weight(1f), selected = state.talkMode == k && (k == "OFF" || micOk)) {
                     LauncherStore.update { it.copy(talkMode = k, talkAsked = true) }
                     if (k != "OFF" && !micOk) askMic.launch(android.Manifest.permission.RECORD_AUDIO)
@@ -79,8 +79,8 @@ fun AlienSettings(state: LauncherState, apps: Map<String, AppInfo>, onPreviewEff
             }
         }
         GlassLabel(
-            (if (!micOk && state.talkMode != "OFF") "Needs the microphone: tap Assistants to allow. " else "") +
-                "His lips move when Claude, Google Assistant, Alexa, Bixby or a voice chat talks (Any sound: music and videos too). Only the loudness is used; nothing is recorded.",
+            (if (!micOk && state.talkMode != "OFF") "Needs the microphone: tap Voices to allow. " else "") +
+                "His lips move when Claude, Google Assistant, Alexa, Bixby or a voice chat talks (All sound: music and videos too). Only the loudness is used; nothing is recorded.",
             13.sp, GlassDim
         )
 
