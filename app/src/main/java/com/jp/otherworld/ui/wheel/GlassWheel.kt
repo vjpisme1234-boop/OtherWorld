@@ -150,31 +150,47 @@ fun GlassWheel(
         }
         if (loop.isEmpty()) return@LaunchedEffect
         val buffers = arrayOfNulls<Bitmap>(3)
-        var i = 0
         var k = 0
         val firstMorph = intro.indexOfFirst { it.startsWith("morph/") }
-        var since = -1
+        // Frames run on the clock: the Earth intro at 30 fps, the morph and Mars at 24. A slow phone skips
+        // frames instead of playing in slow motion, so the boom and the rising smoke stay on time.
+        val introMs = intro.indexOfFirst { !it.startsWith("globe/") }.let { if (it < 0) intro.size else it } * 33.33f
+        val restMs = if (intro.isEmpty() && loop.first().startsWith("globe/")) 33.33f else 41.67f   // Earth alone: 30 fps
+        fun frameAt(ms: Float): Int =                                   // absolute frame number (loop not wrapped)
+            if (ms < introMs) (ms / 33.33f).toInt() else (introMs / 33.33f).toInt() + ((ms - introMs) / restMs).toInt()
+        val started = System.nanoTime()
+        var last = -1
+        var boomed = false
+        // Cheaper phones: if loading frames can't keep up, switch to half-size frames (about 4× faster to load).
+        var sample = 1
+        var loadMs = 0f
         while (true) {
             val t0 = System.nanoTime()
-            val name = if (i < intro.size) intro[i] else loop[(i - intro.size) % loop.size]
+            val p = maxOf(frameAt((t0 - started) / 1e6f), last + 1)
+            val i = if (p < intro.size) p else intro.size + (p - intro.size) % loop.size
+            val name = if (i < intro.size) intro[i] else loop[i - intro.size]
             val slot = k++ % 3
+            val reuse = buffers[slot]
             val bmp = withContext(Dispatchers.Default) {
                 context.assets.open(name).use {
-                    BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inMutable = true; inBitmap = buffers[slot] })
+                    BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inMutable = true; inBitmap = reuse; inSampleSize = sample })
                 }
             } ?: break
+            loadMs = loadMs * 0.8f + (System.nanoTime() - t0) / 1e6f * 0.2f
+            if (sample == 1 && k > 8 && loadMs > 28f) { sample = 2; buffers.fill(null) }
             buffers[slot] = bmp
             globe = bmp
-            // Count frames from the morph's first one (on into Mars, so the last puffs can finish rising).
-            if (i == firstMorph) since = 0 else if (since >= 0 && since < 400) since++
-            // The Earth bursts into smoke ~1.4 s into the morph: a low boom.
-            if (since == 34) com.jp.otherworld.data.Sounds.play("boom")
-            if (since >= 0) { morphT = since / 24f; morphFrameAt = System.nanoTime() }
-            i++
-            if (i >= intro.size + loop.size) i = intro.size
-            // The video frames are 24 fps for Mars/morph, 30 for the Earth.
-            val frameMs = if (name.startsWith("globe/")) 33L else 41L
-            delay(maxOf(1L, frameMs - (System.nanoTime() - t0) / 1_000_000))
+            last = p
+            // Seconds into the morph (on into Mars, so the last puffs can finish rising).
+            if (firstMorph >= 0 && p >= firstMorph) {
+                val since = p - firstMorph
+                // The Earth bursts into smoke ~1.4 s into the morph: a low boom.
+                if (!boomed && since >= 34) { boomed = true; if (since < 60) com.jp.otherworld.data.Sounds.play("boom") }
+                if (since < 400) { morphT = since / 24f; morphFrameAt = System.nanoTime() }
+            }
+            // Wait for the next frame's time (at least a moment, so drawing gets a turn).
+            val next = if ((p + 1) * 33.33f < introMs || restMs < 40f) 33L else 41L
+            delay(maxOf(4L, next - (System.nanoTime() - t0) / 1_000_000))
         }
     }
     val ring = remember(art) { Ring(art) }

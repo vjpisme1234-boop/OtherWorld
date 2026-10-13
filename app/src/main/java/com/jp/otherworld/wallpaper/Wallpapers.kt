@@ -240,9 +240,12 @@ open class AlienWallpaperService : WallpaperService() {
             }
         }
         private var visible = false
+        // Battery saver: Android's saver is on, or under 20% and not charging → half the frame rate, no talk along.
+        private val power = getSystemService(android.os.PowerManager::class.java)
+        private fun saving() = power?.isPowerSaveMode == true || (battery < 0.2f && !charging)
         private val start = SystemClock.uptimeMillis()
         private val frame = object : Runnable {
-            override fun run() { draw(); if (visible) handler.postDelayed(this, 33) }
+            override fun run() { draw(); if (visible) handler.postDelayed(this, if (saving()) 66 else 33) }
         }
 
         // Tilt: gravity, smoothed fast (what you see) and slow (the resting pose), so holding the
@@ -371,7 +374,7 @@ open class AlienWallpaperService : WallpaperService() {
                 leanX += (wantX - leanX) * 0.12f; leanY += (wantY - leanY) * 0.12f
                 // Talk along: how open the mouth is now, and a slower "is talking" level for head movement.
                 val talkMode = com.jp.otherworld.data.LauncherStore.state.value.talkMode
-                val talkOpen = if (talkMode != "OFF" && talk.start(applicationContext)) talk.open(talkMode == "ANY") else { talk.stop(); 0f }
+                val talkOpen = if (talkMode != "OFF" && !saving() && talk.start(applicationContext)) talk.open(talkMode == "ANY") else { talk.stop(); 0f }
                 // While a voice plays, the face becomes the lip-sync video (its head movement and mouth).
                 talkFace.update(now, talkOpen)
                 val moveX = tiltX + leanX; val moveY = tiltY + leanY

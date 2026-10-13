@@ -126,9 +126,21 @@ class TalkFace(private val assets: android.content.res.AssetManager, asset: Stri
     private val cache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
         override fun removeEldestEntry(e: MutableMap.MutableEntry<Int, Bitmap>?) = size > 10
     }
+    // Cheaper phones: if a frame takes too long to load, switch to half-size frames (drawn at full size).
+    private var sample = 1
+    private var loadMs = 0f
+    private var fullW = 0; private var fullH = 0
     private fun frame(i: Int): Bitmap? = cache[i] ?: runCatching {
-        assets.open("talkface/f%03d.webp".format(i)).use { android.graphics.BitmapFactory.decodeStream(it) }
+        val t0 = android.os.SystemClock.uptimeMillis()
+        val b = assets.open("talkface/f%03d.webp".format(i)).use {
+            android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+        }
+        if (b != null && sample == 1) { fullW = b.width; fullH = b.height }
+        loadMs = loadMs * 0.8f + (android.os.SystemClock.uptimeMillis() - t0) * 0.2f
+        if (sample == 1 && loadMs > 20f) { sample = 2; cache.clear() }
+        b
     }.getOrNull()?.also { cache[i] = it }
+    private val dst = android.graphics.RectF()
 
     private var pos = 0f; private var dir = 1
     /** 0 = normal face, 1 = video face. */
@@ -162,7 +174,9 @@ class TalkFace(private val assets: android.content.res.AssetManager, asset: Stri
         if (amount <= 0f) return
         val f = frame(Math.round(pos).coerceIn(0, count - 1)) ?: return
         paint.alpha = (255 * amount).toInt()
-        c.drawBitmap(f, 0f, 0f, paint)
+        if (fullW == 0) { fullW = f.width * sample; fullH = f.height * sample }
+        dst.set(0f, 0f, fullW.toFloat(), fullH.toFloat())
+        c.drawBitmap(f, null, dst, paint)
     }
 
     fun clear() { cache.clear(); amount = 0f; lastAt = 0L }
