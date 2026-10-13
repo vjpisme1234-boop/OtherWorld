@@ -167,6 +167,8 @@ fun GlassWheel(
             globe = bmp
             // Count frames from the morph's first one (on into Mars, so the last puffs can finish rising).
             if (i == firstMorph) since = 0 else if (since >= 0 && since < 400) since++
+            // The Earth bursts into smoke ~1.4 s into the morph: a low boom.
+            if (since == 34) com.jp.otherworld.data.Sounds.play("boom")
             if (since >= 0) { morphT = since / 24f; morphFrameAt = System.nanoTime() }
             i++
             if (i >= intro.size + loop.size) i = intro.size

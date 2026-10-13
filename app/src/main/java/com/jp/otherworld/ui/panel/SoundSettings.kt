@@ -43,7 +43,7 @@ fun SoundSettings(state: LauncherState) {
             GlassButton("Off", selected = !state.sounds) { LauncherStore.update { it.copy(sounds = false) } }
         }
         GlassLabel("Silent when your phone is on vibrate or silent. Tap a number to hear it; the lit one is used. Hold Record to make your own (up to 3 seconds).", 13.sp, GlassDim)
-        listOf("tick" to "Panel tick", "open" to "Open", "ring" to "Ring change", "drawer" to "Wheel opens").forEach { (k, name) ->
+        listOf("tick" to "Panel tick", "open" to "Open", "ring" to "Ring change", "drawer" to "Wheel opens", "boom" to "Earth → Mars boom").forEach { (k, name) ->
             SoundRow(state, k, name)
         }
     }

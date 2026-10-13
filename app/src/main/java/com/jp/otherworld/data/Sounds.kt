@@ -16,12 +16,12 @@ import java.io.File
  * vibrate or silent, or sounds are off in Home settings.
  */
 object Sounds {
-    val KINDS = listOf("tick", "open", "ring", "drawer")
+    val KINDS = listOf("tick", "open", "ring", "drawer", "boom")
     /** The take number of the user's own on-phone recording (built-in takes are 1..4). */
     const val MINE = 9
     const val MAX_RECORD_MS = 3000
     // The takes are levelled to the same loudness (art/generated/sounds/normalized); these are starting volumes.
-    private val DEFAULT_VOLUME = mapOf("tick" to 0.25f, "ring" to 0.25f, "open" to 0.25f, "drawer" to 0.25f)
+    private val DEFAULT_VOLUME = mapOf("tick" to 0.25f, "ring" to 0.25f, "open" to 0.25f, "drawer" to 0.25f, "boom" to 0.7f)
     /** Take used until the user picks one: the set the user chose on their phone (2026-10-10). */
     fun defaultPick(kind: String) = when (kind) { "ring" -> 3; else -> 1 }
 
