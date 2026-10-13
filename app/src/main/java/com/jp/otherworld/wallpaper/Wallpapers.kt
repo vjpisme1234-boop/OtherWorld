@@ -201,6 +201,8 @@ open class AlienWallpaperService : WallpaperService() {
     open val faceDrop = 0f
     /** How strongly the brain shows (1 = full; lower = more see-through). */
     open val brainStrength = 1f
+    /** The brain picture is fitted in the face's own coordinates, so it moves down with the face. */
+    open val brainWithFace = false
     override fun onCreateEngine(): Engine = AlienEngine()
 
     private inner class AlienEngine : Engine(), android.hardware.SensorEventListener {
@@ -428,7 +430,7 @@ open class AlienWallpaperService : WallpaperService() {
                 // exactly as if it sat behind it (screen works the same in either order).
                 brain?.let { b ->
                     // Same place as before the face moved down: undo the drop for the brain.
-                    val up = alien.height * faceDrop
+                    val up = if (brainWithFace) 0f else alien.height * faceDrop
                     brainRect.set(0f, -up, alien.width.toFloat(), alien.height - up)
                     c.drawBitmap(b, null, brainRect, brainPaint)
                 }
@@ -545,6 +547,7 @@ class AlienClearWallpaperService : AlienWallpaperService() {
     override val brainAsset = "alien_clear_brain_layer.webp"
     override val faceDrop = CLEAR_FACE_DROP
     override val brainStrength = 0.6f
+    override val brainWithFace = true
 }
 
 /** White (ice) alien with the user's brain (art/originals/brain.svg) glowing inside the skull. */
