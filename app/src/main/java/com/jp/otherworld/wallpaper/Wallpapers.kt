@@ -207,7 +207,7 @@ open class AlienWallpaperService : WallpaperService() {
         private val eyes = EyeLids(alien, seam)
         // Talk along (test): lips move with the phone's sound.
         private val talkFace = TalkFace(assets, asset)
-        private val brain: Bitmap? = if (!withBrain) null else runCatching { assets.open("alien_brain.webp").use { BitmapFactory.decodeStream(it) } }.getOrNull()
+        private val brain: Bitmap? = if (!withBrain) null else runCatching { assets.open("alien_brain_layer.webp").use { BitmapFactory.decodeStream(it) } }.getOrNull()
         private val brainPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply { blendMode = android.graphics.BlendMode.SCREEN }
         private val brainRect = RectF()
         private val talk = TalkListener()
@@ -416,12 +416,11 @@ open class AlienWallpaperService : WallpaperService() {
                     c.drawBitmap(alien, 0f, 0f, maskPaint.also { it.alpha = (255 * talkFace.amount).toInt() })
                     talkFace.draw(c)
                 }
-                // The user's brain (art/originals/brain.svg) inside the skull: screened, so it glows through
-                // the mesh exactly as if it sat behind it (screen works the same in either order).
+                // The user's glass brain filling the skull (already cut to the head's shape, eyes clear, fading
+                // out below the eyes; same size as the face at 2×). Screened, so it glows through the mesh
+                // exactly as if it sat behind it (screen works the same in either order).
                 brain?.let { b ->
-                    val bw = alien.width * 0.66f; val bh = bw * b.height / b.width
-                    val bx = alien.width * 0.518f - bw / 2; val by = alien.height * 0.06f
-                    brainRect.set(bx, by, bx + bw, by + bh)
+                    brainRect.set(0f, 0f, alien.width.toFloat(), alien.height.toFloat())
                     c.drawBitmap(b, null, brainRect, brainPaint)
                 }
                 c.restoreToCount(save)
