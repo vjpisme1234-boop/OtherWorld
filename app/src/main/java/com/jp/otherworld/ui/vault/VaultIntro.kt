@@ -121,7 +121,7 @@ internal fun alienTint(context: android.content.Context): android.graphics.Color
     val service = runCatching { android.app.WallpaperManager.getInstance(context).wallpaperInfo?.serviceName }.getOrNull() ?: return null
     if (!service.startsWith("com.jp.otherworld.wallpaper.Alien")) return null
     val name = service.substringAfterLast('.')
-    if (name == "AlienIceWallpaperService") return android.graphics.ColorMatrix().apply { setSaturation(0.18f) }
+    if (name == "AlienIceWallpaperService" || name == "AlienBrainWallpaperService") return android.graphics.ColorMatrix().apply { setSaturation(0.18f) }
     val deg = when (name) {
         "AlienGreenWallpaperService" -> -71f
         "AlienPinkWallpaperService" -> 133f

@@ -55,6 +55,7 @@ fun WallpaperPicker(onDone: () -> Unit) {
     val globe = remember { thumb("globe_thumb.jpg") }
     val alien = remember { thumb("alien.png") }
     val alienGreen = remember { thumb("alien_green.png") }
+    val alienBrain = remember { thumb("alien_brain_thumb.jpg") }
     val alienPink = remember { thumb("alien_pink.png") }
     val alienPurple = remember { thumb("alien_purple.png") }
     val alienRed = remember { thumb("alien_red.png") }
@@ -86,6 +87,7 @@ fun WallpaperPicker(onDone: () -> Unit) {
                 LiveThumb(globe, "Globe", w) { setLiveWallpaper(context, GlobeWallpaperService::class.java); onDone() }
                 LiveThumb(alien, "Alien", w) { setLiveWallpaper(context, AlienWallpaperService::class.java); onDone() }
                 LiveThumb(alienGreen, "Green", w) { setLiveWallpaper(context, AlienGreenWallpaperService::class.java); onDone() }
+                LiveThumb(alienBrain, "Brain", w) { setLiveWallpaper(context, com.jp.otherworld.wallpaper.AlienBrainWallpaperService::class.java); onDone() }
                 LiveThumb(alienPink, "Pink", w) { setLiveWallpaper(context, AlienPinkWallpaperService::class.java); onDone() }
                 LiveThumb(alienPurple, "Purple", w) { setLiveWallpaper(context, AlienPurpleWallpaperService::class.java); onDone() }
                 LiveThumb(alienRed, "Red", w) { setLiveWallpaper(context, com.jp.otherworld.wallpaper.AlienRedWallpaperService::class.java); onDone() }

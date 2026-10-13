@@ -193,6 +193,8 @@ open class AlienWallpaperService : WallpaperService() {
     open val asset = "alien.png"
     /** Colour of the bright edge on the blinking lids, matched to the face. */
     open val seam = 0xFFAAF0FF.toInt()
+    /** The user's brain inside the skull (only the Brain wallpaper). */
+    open val withBrain = false
     override fun onCreateEngine(): Engine = AlienEngine()
 
     private inner class AlienEngine : Engine(), android.hardware.SensorEventListener {
@@ -205,6 +207,9 @@ open class AlienWallpaperService : WallpaperService() {
         private val eyes = EyeLids(alien, seam)
         // Talk along (test): lips move with the phone's sound.
         private val talkFace = TalkFace(assets, asset)
+        private val brain: Bitmap? = if (!withBrain) null else runCatching { assets.open("alien_brain.webp").use { BitmapFactory.decodeStream(it) } }.getOrNull()
+        private val brainPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply { blendMode = android.graphics.BlendMode.SCREEN }
+        private val brainRect = RectF()
         private val talk = TalkListener()
         // Breaking apart for the hidden drawer, built the first time each style is used.
         private val shatters = HashMap<ShatterStyle, Shatter>()
@@ -411,6 +416,14 @@ open class AlienWallpaperService : WallpaperService() {
                     c.drawBitmap(alien, 0f, 0f, maskPaint.also { it.alpha = (255 * talkFace.amount).toInt() })
                     talkFace.draw(c)
                 }
+                // The user's brain (art/originals/brain.svg) inside the skull: screened, so it glows through
+                // the mesh exactly as if it sat behind it (screen works the same in either order).
+                brain?.let { b ->
+                    val bw = alien.width * 0.66f; val bh = bw * b.height / b.width
+                    val bx = alien.width * 0.518f - bw / 2; val by = alien.height * 0.06f
+                    brainRect.set(bx, by, bx + bw, by + bh)
+                    c.drawBitmap(b, null, brainRect, brainPaint)
+                }
                 c.restoreToCount(save)
                 // Charging: a bright band of the halo sweeps up the face every 2.5 s.
                 if (charging) {
@@ -514,6 +527,13 @@ private class EyeLids(src: Bitmap, seam: Int) {
 class AlienGreenWallpaperService : AlienWallpaperService() {
     override val asset = "alien_green.png"
     override val seam = 0xFFB8FFB0.toInt()
+}
+
+/** White (ice) alien with the user's brain (art/originals/brain.svg) glowing inside the skull. */
+class AlienBrainWallpaperService : AlienWallpaperService() {
+    override val asset = "alien_ice.png"
+    override val seam = 0xFFFFFFFF.toInt()
+    override val withBrain = true
 }
 
 /** The electric neon purple copy (art/derived/alien_purple.png). */
