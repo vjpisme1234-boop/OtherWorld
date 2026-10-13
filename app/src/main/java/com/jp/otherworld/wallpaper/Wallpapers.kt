@@ -195,6 +195,8 @@ open class AlienWallpaperService : WallpaperService() {
     open val seam = 0xFFAAF0FF.toInt()
     /** The user's brain inside the skull (only the Brain wallpaper). */
     open val withBrain = false
+    /** Brain picture, already fitted to this alien's head (face-sized, 2×). */
+    open val brainAsset = "alien_brain_layer.webp"
     override fun onCreateEngine(): Engine = AlienEngine()
 
     private inner class AlienEngine : Engine(), android.hardware.SensorEventListener {
@@ -207,7 +209,7 @@ open class AlienWallpaperService : WallpaperService() {
         private val eyes = EyeLids(alien, seam)
         // Talk along (test): lips move with the phone's sound.
         private val talkFace = TalkFace(assets, asset)
-        private val brain: Bitmap? = if (!withBrain) null else runCatching { assets.open("alien_brain_layer.webp").use { BitmapFactory.decodeStream(it) } }.getOrNull()
+        private val brain: Bitmap? = if (!withBrain) null else runCatching { assets.open(brainAsset).use { BitmapFactory.decodeStream(it) } }.getOrNull()
         private val brainPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply { blendMode = android.graphics.BlendMode.SCREEN }
         private val brainRect = RectF()
         private val talk = TalkListener()
@@ -533,6 +535,7 @@ class AlienClearWallpaperService : AlienWallpaperService() {
     override val asset = "alien_clear.png"
     override val seam = 0xFFE8FBFF.toInt()
     override val withBrain = true
+    override val brainAsset = "alien_clear_brain_layer.webp"
 }
 
 /** White (ice) alien with the user's brain (art/originals/brain.svg) glowing inside the skull. */
