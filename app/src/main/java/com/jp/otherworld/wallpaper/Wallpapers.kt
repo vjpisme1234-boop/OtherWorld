@@ -528,7 +528,7 @@ class AlienGreenWallpaperService : AlienWallpaperService() {
     override val seam = 0xFFB8FFB0.toInt()
 }
 
-/** Clear glass alien (art/derived/alien_clear.png) with the user's glass brain showing through. */
+/** The user's glass alien (art/originals/alien_glass.png, lined up by the eyes) with their glass brain inside. */
 class AlienClearWallpaperService : AlienWallpaperService() {
     override val asset = "alien_clear.png"
     override val seam = 0xFFE8FBFF.toInt()
