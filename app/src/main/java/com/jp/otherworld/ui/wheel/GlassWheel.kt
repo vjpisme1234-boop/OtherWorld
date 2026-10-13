@@ -129,6 +129,11 @@ fun GlassWheel(
     // decoded off the main thread at the video's 30 fps while the wheel is showing.
     val context = view.context
     var globe by remember { mutableStateOf<Bitmap?>(null) }
+    // How far into the Earth → Mars morph we are (seconds of its frames, + when that frame went up), for the
+    // smoke rising out of the top of the globe: tied to the frames so it stays in step on slow phones too.
+    var morphT by remember { mutableStateOf(-1f) }
+    var morphFrameAt by remember { mutableStateOf(0L) }
+    val puffs = remember { (0..2).mapNotNull { k -> runCatching { context.assets.open("smoke_puff_$k.webp").use { BitmapFactory.decodeStream(it) } }.getOrNull() } }
     // MORPH: each time the wheel opens the Earth goes up in smoke and becomes Mars, which then spins.
     LaunchedEffect(active, center) {
         if (!active || center == "NONE") { globe = null; return@LaunchedEffect }
@@ -138,14 +143,17 @@ fun GlassWheel(
             when {
                 center == "EARTH" || mars.isEmpty() -> emptyList<String>() to frames("globe")
                 center == "MARS" -> emptyList<String>() to mars
-                // Earth spins ~2 s first (the globe loop's last 60 frames lead straight into the morph's first frame).
-                else -> (frames("globe").takeLast(60) + frames("morph")) to mars
+                // Earth spins ~2 s first (globe frames 0–59, same side as the morph starts on); the morph frames
+                // carry on that spin under the smoke (baked: tools/smoke_over_spin.py, 60-frame head start).
+                else -> (frames("globe").take(60) + frames("morph")) to mars
             }
         }
         if (loop.isEmpty()) return@LaunchedEffect
         val buffers = arrayOfNulls<Bitmap>(3)
         var i = 0
         var k = 0
+        val firstMorph = intro.indexOfFirst { it.startsWith("morph/") }
+        var since = -1
         while (true) {
             val t0 = System.nanoTime()
             val name = if (i < intro.size) intro[i] else loop[(i - intro.size) % loop.size]
@@ -157,6 +165,9 @@ fun GlassWheel(
             } ?: break
             buffers[slot] = bmp
             globe = bmp
+            // Count frames from the morph's first one (on into Mars, so the last puffs can finish rising).
+            if (i == firstMorph) since = 0 else if (since >= 0 && since < 400) since++
+            if (since >= 0) { morphT = since / 24f; morphFrameAt = System.nanoTime() }
             i++
             if (i >= intro.size + loop.size) i = intro.size
             // The video frames are 24 fps for Mars/morph, 30 for the Earth.
@@ -258,6 +269,7 @@ fun GlassWheel(
                 // The globe stands inside the ring: after the far slabs, before the near ones.
                 if (!globeDrawn && cos(Math.toRadians(s.theta.toDouble())) >= 0.0) {
                     globe?.let { drawGlobe(canvas, it, fit, paints) }
+                    if (morphT in 0f..20f) drawRisingSmoke(canvas, puffs, fit, paints, morphT + minOf((System.nanoTime() - morphFrameAt) / 1e9f, 0.042f))
                     globeDrawn = true
                 }
                 if (s.j == opening) continue
@@ -406,6 +418,7 @@ private class Paints {
     val reflection = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
     val path = Path()
     val globe = Paint(Paint.FILTER_BITMAP_FLAG).apply { blendMode = BlendMode.SCREEN }
+    val smoke = Paint(Paint.FILTER_BITMAP_FLAG).apply { blendMode = BlendMode.SCREEN }
     private val shaders = HashMap<WheelArt.Slab, BitmapShader>()
     fun spriteShader(slab: WheelArt.Slab) = shaders.getOrPut(slab) { BitmapShader(slab.sprite, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP) }
 }
@@ -453,6 +466,33 @@ private fun drawGlobe(canvas: Canvas, frame: Bitmap, fit: Fit, paints: Paints, t
     val r = RectF(cx - w / 2, bottom - h, cx + w / 2, bottom)
     val q = fit.toScreen(floatArrayOf(r.left, r.top, r.right, r.top, r.right, r.bottom, r.left, r.bottom))
     canvas.drawBitmap(frame, null, RectF(q[0], q[1], q[4], q[5]), paints.globe)
+}
+
+/**
+ * Smoke rising out of the top of the globe while the Earth turns to smoke (the video's smoke is cut off by
+ * the globe's round frame). Soft puffs cut from that smoke drift up, spread, grow and fade; screened like
+ * the globe so their black falls away. `t` = seconds since the morph began.
+ */
+private fun drawRisingSmoke(canvas: Canvas, puffs: List<Bitmap>, fit: Fit, paints: Paints, t: Float) {
+    if (puffs.isEmpty() || t < 1.4f || t > 6.5f) return
+    val cx = 1046f; val w = 680f; val h = w * 432f / 480f; val top = 900f - h
+    for (i in 0 until 14) {
+        val born = 1.5f + i * 0.2f
+        val p = (t - born) / 2.6f
+        if (p <= 0f || p >= 1f) continue
+        val r1 = kotlin.math.sin(i * 12.9898f) * 0.5f; val r2 = kotlin.math.sin(i * 78.233f) * 0.5f
+        val x = cx + r1 * w * 0.5f + r2 * w * 0.35f * p
+        val y = top + h * 0.22f - p * h * 0.85f
+        val size = w * (0.32f + 0.5f * p)
+        val alpha = (minOf(p / 0.15f, 1f) * (1f - p) * (1f - p) * 230).toInt()
+        val l = x - size / 2; val tp = y - size / 2; val rt = x + size / 2; val bt = y + size / 2
+        val q = fit.toScreen(floatArrayOf(l, tp, rt, tp, rt, bt, l, bt))
+        paints.smoke.alpha = alpha
+        canvas.save()
+        canvas.rotate(r2 * 120f * p, (q[0] + q[4]) / 2, (q[1] + q[5]) / 2)
+        canvas.drawBitmap(puffs[i % puffs.size], null, RectF(q[0], q[1], q[4], q[5]), paints.smoke)
+        canvas.restore()
+    }
 }
 
 /** The slab mirrored onto the floor under it, fading out downwards. */
