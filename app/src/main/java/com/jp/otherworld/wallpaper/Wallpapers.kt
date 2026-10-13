@@ -205,6 +205,8 @@ open class AlienWallpaperService : WallpaperService() {
     open val brainWithFace = false
     /** How strong the soft halo around the head is (1 = normal). */
     open val haloStrength = 1f
+    /** Talk-along frames for this alien (assets/<dir>/f000…). */
+    open val talkDir = "talkface"
     override fun onCreateEngine(): Engine = AlienEngine()
 
     private inner class AlienEngine : Engine(), android.hardware.SensorEventListener {
@@ -216,7 +218,7 @@ open class AlienWallpaperService : WallpaperService() {
         )
         private val eyes = EyeLids(alien, seam)
         // Talk along (test): lips move with the phone's sound.
-        private val talkFace = TalkFace(assets, asset)
+        private val talkFace = TalkFace(assets, asset, talkDir)
         private val brain: Bitmap? = if (!withBrain) null else runCatching { assets.open(brainAsset).use { BitmapFactory.decodeStream(it) } }.getOrNull()
         private val brainPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply { blendMode = android.graphics.BlendMode.SCREEN; alpha = (255 * brainStrength).toInt() }
         private val brainRect = RectF()
@@ -551,6 +553,7 @@ class AlienClearWallpaperService : AlienWallpaperService() {
     override val brainStrength = 0.6f
     override val brainWithFace = true
     override val haloStrength = 0.25f
+    override val talkDir = "talkface_clear"
 }
 
 /** White (ice) alien with the user's brain (art/originals/brain.svg) glowing inside the skull. */
