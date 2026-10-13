@@ -199,6 +199,8 @@ open class AlienWallpaperService : WallpaperService() {
     open val brainAsset = "alien_brain_layer.webp"
     /** Moves the face down by this share of its height (the brain stays put). */
     open val faceDrop = 0f
+    /** How strongly the brain shows (1 = full; lower = more see-through). */
+    open val brainStrength = 1f
     override fun onCreateEngine(): Engine = AlienEngine()
 
     private inner class AlienEngine : Engine(), android.hardware.SensorEventListener {
@@ -212,7 +214,7 @@ open class AlienWallpaperService : WallpaperService() {
         // Talk along (test): lips move with the phone's sound.
         private val talkFace = TalkFace(assets, asset)
         private val brain: Bitmap? = if (!withBrain) null else runCatching { assets.open(brainAsset).use { BitmapFactory.decodeStream(it) } }.getOrNull()
-        private val brainPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply { blendMode = android.graphics.BlendMode.SCREEN }
+        private val brainPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply { blendMode = android.graphics.BlendMode.SCREEN; alpha = (255 * brainStrength).toInt() }
         private val brainRect = RectF()
         private val talk = TalkListener()
         // Breaking apart for the hidden drawer, built the first time each style is used.
@@ -542,6 +544,7 @@ class AlienClearWallpaperService : AlienWallpaperService() {
     override val withBrain = true
     override val brainAsset = "alien_clear_brain_layer.webp"
     override val faceDrop = CLEAR_FACE_DROP
+    override val brainStrength = 0.6f
 }
 
 /** White (ice) alien with the user's brain (art/originals/brain.svg) glowing inside the skull. */
