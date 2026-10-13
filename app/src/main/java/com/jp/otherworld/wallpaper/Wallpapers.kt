@@ -197,6 +197,8 @@ open class AlienWallpaperService : WallpaperService() {
     open val withBrain = false
     /** Brain picture, already fitted to this alien's head (face-sized, 2×). */
     open val brainAsset = "alien_brain_layer.webp"
+    /** Moves the face down by this share of its height (the brain stays put). */
+    open val faceDrop = 0f
     override fun onCreateEngine(): Engine = AlienEngine()
 
     private inner class AlienEngine : Engine(), android.hardware.SensorEventListener {
@@ -392,7 +394,8 @@ open class AlienWallpaperService : WallpaperService() {
                 val place = alienPlace(c.width.toFloat(), c.height.toFloat(), alien.width, alien.height)
                 val sc = place.width() / alien.width
                 val aw = place.width(); val ah = place.height()
-                val l = place.left + moveX; val top = place.top + float + moveY
+                val drop = place.height() * faceDrop
+                val l = place.left + moveX; val top = place.top + float + moveY + drop
                 val g = 1.12f
                 // Hidden drawer: 0 = whole face, 1 = broken apart and gone.
                 val gone = com.jp.otherworld.data.AlienSignals.shatterProgress(now)
@@ -422,7 +425,9 @@ open class AlienWallpaperService : WallpaperService() {
                 // out below the eyes; same size as the face at 2×). Screened, so it glows through the mesh
                 // exactly as if it sat behind it (screen works the same in either order).
                 brain?.let { b ->
-                    brainRect.set(0f, 0f, alien.width.toFloat(), alien.height.toFloat())
+                    // Same place as before the face moved down: undo the drop for the brain.
+                    val up = alien.height * faceDrop
+                    brainRect.set(0f, -up, alien.width.toFloat(), alien.height - up)
                     c.drawBitmap(b, null, brainRect, brainPaint)
                 }
                 c.restoreToCount(save)
@@ -536,6 +541,7 @@ class AlienClearWallpaperService : AlienWallpaperService() {
     override val seam = 0xFFE8FBFF.toInt()
     override val withBrain = true
     override val brainAsset = "alien_clear_brain_layer.webp"
+    override val faceDrop = CLEAR_FACE_DROP
 }
 
 /** White (ice) alien with the user's brain (art/originals/brain.svg) glowing inside the skull. */
@@ -603,6 +609,13 @@ fun alienPlace(w: Float, h: Float, iw: Int, ih: Int): RectF {
 }
 private const val ALIEN_KEEP_W = 0.85f   // share of the face's width always on screen
 private const val ALIEN_EYES_Y = 0.58f   // eye line, as a fraction of the image height
+
+const val CLEAR_FACE_DROP = 0.08f
+
+/** How far the set alien wallpaper's face is moved down (share of its height), for placing its eyes. */
+fun alienFaceDrop(context: android.content.Context): Float = runCatching {
+    if (android.app.WallpaperManager.getInstance(context).wallpaperInfo?.serviceName?.endsWith("AlienClearWallpaperService") == true) CLEAR_FACE_DROP else 0f
+}.getOrDefault(0f)
 
 /** Alien image size (width, height) — needed to place the eyes on screen the way the wallpaper does. */
 fun alienSize(context: android.content.Context): Pair<Int, Int> {

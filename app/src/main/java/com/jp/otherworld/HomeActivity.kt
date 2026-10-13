@@ -203,10 +203,10 @@ class HomeActivity : ComponentActivity() {
             }
 
             var eyesHeld by remember { mutableStateOf(false) }
-            val alienEyes by produceState<AlienEyes?>(null) {
+            val alienEyes by produceState<AlienEyes?>(null, homePresses) {
                 value = withContext(Dispatchers.Default) {
                     val (w, h) = com.jp.otherworld.wallpaper.alienSize(context)
-                    AlienEyes(com.jp.otherworld.wallpaper.alienEyeSpots(context), w, h)
+                    AlienEyes(com.jp.otherworld.wallpaper.alienEyeSpots(context), w, h, com.jp.otherworld.wallpaper.alienFaceDrop(context))
                 }
             }
             // Room around each eye for the face's float, tilt (~6% of the width) and lean (~3%) plus a fingertip.
@@ -569,12 +569,12 @@ private fun Modifier.leanAlien(): Modifier = pointerInput(Unit) {
 }
 
 /** The two eyes of the alien wallpaper: spots as fractions of the image, plus the image size. */
-private class AlienEyes(val spots: List<android.graphics.RectF>, val imgW: Int, val imgH: Int) {
+private class AlienEyes(val spots: List<android.graphics.RectF>, val imgW: Int, val imgH: Int, val drop: Float = 0f) {
     /** Each eye on a screen of w×h, placed the way the wallpaper draws it ([alienPlace]). */
     fun onScreen(w: Float, h: Float): List<androidx.compose.ui.geometry.Rect> {
         val p = com.jp.otherworld.wallpaper.alienPlace(w, h, imgW, imgH)
         val sc = p.width() / imgW
-        val l = p.left; val t = p.top
+        val l = p.left; val t = p.top + p.height() * drop
         return spots.map { androidx.compose.ui.geometry.Rect(l + it.left * imgW * sc, t + it.top * imgH * sc, l + it.right * imgW * sc, t + it.bottom * imgH * sc) }
     }
 }
