@@ -191,11 +191,11 @@ fun HomeScreen(
             }
         }
         // The page dots and the dock can be moved up (Move dock / Move page dots, or hold the dots).
-        MovableBar(state.dotsLift, editingWidget == EDIT_DOTS, onHold = { onEditWidget(EDIT_DOTS) }, onDone = { onEditWidget(null) },
+        MovableBar(state.dotsLift, 0.29f, editingWidget == EDIT_DOTS, onHold = { onEditWidget(EDIT_DOTS) }, onDone = { onEditWidget(null) },
             save = { v -> LauncherStore.update { it.copy(dotsLift = v) } }) {
             PageDots(state.pages.size, pager.currentPage)
         }
-        MovableBar(state.dockLift, editingWidget == EDIT_DOCK, onHold = null, onDone = { onEditWidget(null) },
+        MovableBar(state.dockLift, 1f, editingWidget == EDIT_DOCK, onHold = null, onDone = { onEditWidget(null) },
             save = { v -> LauncherStore.update { it.copy(dockLift = v) } }) {
             Dock(state, apps, iconDp, onOpenDrawer, onAppMenu, onEmptyDockSlot)
         }
@@ -212,11 +212,13 @@ const val EDIT_DOTS = Int.MIN_VALUE + 1
  */
 @Composable
 private fun MovableBar(
-    lift: Float, editing: Boolean, onHold: (() -> Unit)?, onDone: () -> Unit, save: (Float) -> Unit,
+    savedLift: Float, defaultShare: Float, editing: Boolean, onHold: (() -> Unit)?, onDone: () -> Unit, save: (Float) -> Unit,
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
     val maxLift = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp - 170).coerceAtLeast(0).toFloat()
+    // Not moved yet: the default height, as a share of what's available (same look on any screen size).
+    val lift = if (savedLift < 0f) defaultShare * maxLift else savedLift
     var drag by remember { mutableStateOf(0f) }          // dp, while dragging
     val shown = (lift + drag).coerceIn(0f, maxLift)
     Box(

@@ -74,11 +74,20 @@ sealed class HomeItem {
 
 data class Page(val items: List<HomeItem> = emptyList())
 
+/**
+ * First-install defaults = the user's own settings on their Fold (2026-10-12): sound picks and (quiet) volumes,
+ * ring-change sound off, Any-sound talk along, small custom-glass icons, no night mode, dock at the top.
+ */
+const val DEFAULT_LIFT = -1f   // "not moved yet": use the default share of the screen (see MovableBar)
+val DEFAULT_SOUND_PICK = mapOf("drawer" to 1, "open" to 1, "ring" to 3)
+val DEFAULT_SOUND_OFF = setOf("ring")
+val DEFAULT_SOUND_VOLUME = mapOf("drawer" to 0.061f, "ring" to 0f, "tick" to 0.047f, "open" to 0.058f)
+
 data class LauncherState(
     val pages: List<Page> = listOf(Page()),
     val dock: List<String?> = List(5) { null },
-    val iconStyle: IconStyle = IconStyle.ORIGINAL_IN_GLASS,
-    val iconSize: IconSize = IconSize.M,
+    val iconStyle: IconStyle = IconStyle.CUSTOM_GLASS,
+    val iconSize: IconSize = IconSize.S,
     val showLabels: Boolean = true,
     val defaultPage: Int = 0,
     /** The default wallpaper (green alien; the globe before 2026-10-10) has been offered, first time we became home. */
@@ -89,13 +98,15 @@ data class LauncherState(
     /** New notifications make the alien's halo pulse in a colour. */
     val notifGlow: Boolean = true,
     /** Talk along: the alien's lips move with ASSISTANT voices (Claude, Google, Alexa, Bixby…), ANY sound, or OFF. Needs the microphone permission. */
-    val talkMode: String = "ASSISTANT",
+    val talkMode: String = "ANY",
     /** The one-time "let him talk along?" question has been answered. */
     val talkAsked: Boolean = false,
+    /** The first-run setup guide has been finished (older installs count as done). */
+    val setupDone: Boolean = false,
     /** Per-app glow colour (ARGB); [GLOW_OFF] = never glow for that app. Apps not listed use their type's colour. */
     val glowColors: Map<String, Int> = emptyMap(),
     /** Night mode: alien dims, eyes half shut. Times are minutes after midnight. */
-    val nightOn: Boolean = true,
+    val nightOn: Boolean = false,
     val nightStart: Int = 22 * 60,
     val nightEnd: Int = 7 * 60,
     /** How the hidden drawer opens: VIDEO (smoke → glass case, the user's pick), or the alien breaking apart: DUST, SHARDS, SPARKS. */
@@ -104,8 +115,8 @@ data class LauncherState(
     /** Glowing dots on icons of apps with unread notifications. */
     val showDots: Boolean = true,
     /** How far the dock and the page dots have been moved up from the bottom (dp). */
-    val dockLift: Float = 0f,
-    val dotsLift: Float = 0f,
+    val dockLift: Float = DEFAULT_LIFT,
+    val dotsLift: Float = DEFAULT_LIFT,
     /** Gestures on empty home. */
     val doubleTapLock: Boolean = true,
     val swipeDownNotifications: Boolean = true,
@@ -120,11 +131,11 @@ data class LauncherState(
     /** Glass sounds in the wheel (silent anyway when the phone is on vibrate/silent). */
     val sounds: Boolean = true,
     /** Which take (1–3) the user picked for each sound: tick, open, ring, drawer. */
-    val soundPick: Map<String, Int> = emptyMap(),
+    val soundPick: Map<String, Int> = DEFAULT_SOUND_PICK,
     /** Sounds the user switched off one by one. */
-    val soundOff: Set<String> = emptySet(),
+    val soundOff: Set<String> = DEFAULT_SOUND_OFF,
     /** Each sound's own volume, 0..1 (missing = its default). */
-    val soundVolume: Map<String, Float> = emptyMap(),
+    val soundVolume: Map<String, Float> = DEFAULT_SOUND_VOLUME,
     /** Middle of the wheel: MORPH (Earth → smoke → Mars each time it opens), EARTH, MARS or NONE. */
     val wheelCenter: String = "MORPH"
 ) {
@@ -216,10 +227,8 @@ object LauncherStore {
             first("com.sec.android.app.camera", "com.google.android.GoogleCamera", "com.android.camera2"),
             first("com.sec.android.gallery3d", "com.google.android.apps.photos")
         )
-        return LauncherState(
-            dock = dock,
-            iconStyle = if (hasCustomIcons(context)) IconStyle.CUSTOM_GLASS else IconStyle.ORIGINAL_IN_GLASS
-        )
+        // Custom glass (the user's choice) falls back to the original icon in glass for apps without a custom one.
+        return LauncherState(dock = dock)
     }
 
     private fun encode(s: LauncherState) = JSONObject().apply {
@@ -246,6 +255,7 @@ object LauncherStore {
         put("notifGlow", s.notifGlow)
         put("talkMode", s.talkMode)
         put("talkAsked", s.talkAsked)
+        put("setupDone", s.setupDone)
         put("glowColors", JSONObject().apply { s.glowColors.forEach { (k, v) -> put(k, v) } })
         put("nightOn", s.nightOn)
         put("nightStart", s.nightStart)
@@ -290,23 +300,24 @@ object LauncherStore {
         return LauncherState(
             pages = pages,
             dock = dock,
-            iconStyle = IconStyle.valueOf(o.optString("iconStyle", IconStyle.ORIGINAL_IN_GLASS.name)),
-            iconSize = IconSize.valueOf(o.optString("iconSize", IconSize.M.name)),
+            iconStyle = IconStyle.valueOf(o.optString("iconStyle", IconStyle.CUSTOM_GLASS.name)),
+            iconSize = IconSize.valueOf(o.optString("iconSize", IconSize.S.name)),
             showLabels = o.optBoolean("showLabels", true),
             defaultPage = o.optInt("defaultPage", 0).coerceIn(0, pages.size - 1),
             globeOffered = o.optBoolean("globeOffered", false),
             secretHintDeleted = o.optBoolean("secretHintDeleted", false),
             notifGlow = o.optBoolean("notifGlow", true),
-            talkMode = o.optString("talkMode", "ASSISTANT"),
+            talkMode = o.optString("talkMode", "ANY"),
             talkAsked = o.optBoolean("talkAsked", false),
+            setupDone = o.optBoolean("setupDone", o.has("pages")),
             glowColors = o.optJSONObject("glowColors")?.let { g -> g.keys().asSequence().associateWith { g.getInt(it) } }.orEmpty(),
-            nightOn = o.optBoolean("nightOn", true),
+            nightOn = o.optBoolean("nightOn", false),
             nightStart = o.optInt("nightStart", 22 * 60),
             nightEnd = o.optInt("nightEnd", 7 * 60),
             vaultEffect = o.optString("vaultEffect", "VIDEO_SMOKE"),
             showDots = o.optBoolean("showDots", true),
-            dockLift = o.optDouble("dockLift", 0.0).toFloat(),
-            dotsLift = o.optDouble("dotsLift", 0.0).toFloat(),
+            dockLift = o.optDouble("dockLift", DEFAULT_LIFT.toDouble()).toFloat(),
+            dotsLift = o.optDouble("dotsLift", DEFAULT_LIFT.toDouble()).toFloat(),
             doubleTapLock = o.optBoolean("doubleTapLock", true),
             swipeDownNotifications = o.optBoolean("swipeDownNotifications", true),
             twoFingerQuickSettings = o.optBoolean("twoFingerQuickSettings", true),
@@ -314,9 +325,9 @@ object LauncherStore {
             customRings = o.optJSONArray("customRings")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty(),
             recent = o.optJSONArray("recent")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty(),
             sounds = o.optBoolean("sounds", true),
-            soundPick = o.optJSONObject("soundPick")?.let { g -> g.keys().asSequence().associateWith { g.getInt(it) } }.orEmpty(),
-            soundOff = o.optJSONArray("soundOff")?.let { a -> (0 until a.length()).map { a.getString(it) }.toSet() }.orEmpty(),
-            soundVolume = o.optJSONObject("soundVolume")?.let { g -> g.keys().asSequence().associateWith { g.getDouble(it).toFloat() } }.orEmpty(),
+            soundPick = o.optJSONObject("soundPick")?.let { g -> g.keys().asSequence().associateWith { g.getInt(it) } } ?: DEFAULT_SOUND_PICK,
+            soundOff = o.optJSONArray("soundOff")?.let { a -> (0 until a.length()).map { a.getString(it) }.toSet() } ?: DEFAULT_SOUND_OFF,
+            soundVolume = o.optJSONObject("soundVolume")?.let { g -> g.keys().asSequence().associateWith { g.getDouble(it).toFloat() } } ?: DEFAULT_SOUND_VOLUME,
             wheelCenter = o.optString("wheelCenter", "MORPH")
         )
     }

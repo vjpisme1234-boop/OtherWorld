@@ -395,6 +395,9 @@ class HomeActivity : ComponentActivity() {
                 }
                 if (missedPlaying) com.jp.otherworld.ui.home.MissedCallVideo { missedPlaying = false }
 
+                // First run: the setup guide (home screen, wallpaper, notifications, talk along, lock, secret drawer).
+                if (!state.setupDone) com.jp.otherworld.ui.home.SetupGuide { }
+
                 // Once: offer Talk along (the alien's lips move when an assistant talks); it needs the microphone.
                 val askTalkMic = androidx.activity.compose.rememberLauncherForActivityResult(
                     androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -402,7 +405,7 @@ class HomeActivity : ComponentActivity() {
                 val alienWallpaper = remember(homePresses, state.globeOffered) {
                     runCatching { android.app.WallpaperManager.getInstance(context).wallpaperInfo?.serviceName?.startsWith("com.jp.otherworld.wallpaper.Alien") }.getOrNull() == true
                 }
-                if (!state.talkAsked && state.talkMode != "OFF" && alienWallpaper && !vaultOpen && !drawerOpen &&
+                if (state.setupDone && !state.talkAsked && state.talkMode != "OFF" && alienWallpaper && !vaultOpen && !drawerOpen &&
                     context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED
                 ) GlassSheet({ LauncherStore.update { it.copy(talkAsked = true, talkMode = "OFF") } }) {
                     GlassLabel("Let the alien talk?", 22.sp)
@@ -480,7 +483,7 @@ class HomeActivity : ComponentActivity() {
         super.onResume()
         // First time Other World is the home screen: offer the green alien wallpaper (once).
         val rm = getSystemService(android.app.role.RoleManager::class.java)
-        if (rm?.isRoleHeld(android.app.role.RoleManager.ROLE_HOME) == true && !LauncherStore.state.value.globeOffered) {
+        if (LauncherStore.state.value.setupDone && rm?.isRoleHeld(android.app.role.RoleManager.ROLE_HOME) == true && !LauncherStore.state.value.globeOffered) {
             LauncherStore.update { it.copy(globeOffered = true) }
             setLiveWallpaper(this, com.jp.otherworld.wallpaper.AlienGreenWallpaperService::class.java)
         }
