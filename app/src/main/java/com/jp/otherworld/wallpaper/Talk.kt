@@ -136,7 +136,7 @@ class TalkListener {
                     appContext?.let { c -> runCatching { viz?.enabled = false; viz?.release() }; viz = null; start(c) }
                 }
                 if (now - silentSince > 250) talkingMotion(now) else 0f
-            } else { silentSince = 0L; if (voice) heardLevel else 0f }
+            } else { silentSince = 0L; heardLevel }
         }
         level += (target - level) * (if (target > level) 0.55f else 0.35f)
         // Shape: bright sounds (ee, s) pull the mouth wide and flat, dark ones (oo, oh) small and round.
