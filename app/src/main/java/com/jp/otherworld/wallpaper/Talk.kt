@@ -31,6 +31,7 @@ class TalkListener {
 
     private var audio: android.media.AudioManager? = null
     private var voiceUntil = 0L; private var checkedAt = 0L
+    private var loudest = -9600f
 
     fun start(context: Context): Boolean {
         if (viz != null) return true
@@ -75,9 +76,16 @@ class TalkListener {
         val heard = anySound || voicePlaying()
         val target = if (!heard) 0f else runCatching {
             v.getMeasurementPeakRms(m)
-            // mRms is in millibels: about -9600 (silence) .. 0 (full). Voices sit around -4500..-1500.
-            // a square-root curve so normal speech already opens it most of the way
-            Math.sqrt(((m.mRms + 5600f) / 3600f).coerceIn(0f, 1f).toDouble()).toFloat()
+            // mRms is in millibels (about -9600 = silence .. 0 = full). Phones play at very different volumes,
+            // so judge against the loudest of the last few seconds: syllables open it fully at any volume,
+            // the quiet between words closes it, and only real silence (< -8500) keeps it shut.
+            // mRms is in millibels (about -9600 = silence .. 0 = full). Phones play at very different volumes,
+            // so judge against the loudest of the last few seconds: syllables open it fully at any volume,
+            // the quiet between words closes it, and only real silence (< -8500) keeps it shut.
+            val rms = m.mRms.toFloat()
+            loudest = if (rms > loudest) rms else loudest - 6f              // slowly forgets old peaks
+            if (rms < -8500f) 0f
+            else Math.sqrt(((rms - (loudest - 1500f)) / 1500f).coerceIn(0f, 1f).toDouble()).toFloat()
         }.getOrDefault(0f)
         level += (target - level) * (if (target > level) 0.55f else 0.35f)
         // Shape: bright sounds (ee, s) pull the mouth wide and flat, dark ones (oo, oh) small and round.
