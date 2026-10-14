@@ -298,11 +298,14 @@ class HomeActivity : ComponentActivity() {
                             GlassLabel(ringName, 17.sp, GlassCyan)
                             GlassLabel("  ›", 16.sp, GlassDim)
                         }
+                        val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
                         // Search: type an app's name; Search on the keyboard opens the best match.
                         com.jp.otherworld.ui.wheel.WheelSearch(
                             wheelQuery, { wheelQuery = it },
                             onGo = { found.firstOrNull()?.let { launchApp(context, it.packageName); drawerOpen = false } },
-                            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp).fillMaxWidth(0.84f)
+                            // Landscape: top-left corner, beside the ring name, so it doesn't cross the panels.
+                            modifier = if (landscape) Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 24.dp, top = 18.dp).fillMaxWidth(0.3f)
+                                else Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 76.dp).fillMaxWidth(0.84f)
                         )
                         if (searching && found.isEmpty()) GlassLabel("No apps match “${wheelQuery.trim()}”", 15.sp, GlassDim,
                             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 136.dp))
