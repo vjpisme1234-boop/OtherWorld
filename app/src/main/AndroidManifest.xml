@@ -58,17 +58,6 @@
             </intent-filter>
         </service>
 
-        <!-- Accessibility (the user turns it on): only for double-tap to lock. -->
-        <service
-            android:name=".service.GestureService"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data android:name="android.accessibilityservice" android:resource="@xml/gesture_service" />
-        </service>
 
         <!-- Shown by Android instead of "Clear data": puts the hidden drawer back on the phone first. -->
         <activity
@@ -107,28 +96,6 @@
                 <action android:name="android.service.wallpaper.WallpaperService" />
             </intent-filter>
             <meta-data android:name="android.service.wallpaper" android:resource="@xml/wallpaper_alien_green" />
-        </service>
-
-        <service
-            android:name=".wallpaper.AlienClearWallpaperService"
-            android:exported="true"
-            android:label="@string/wp_alien_clear"
-            android:permission="android.permission.BIND_WALLPAPER">
-            <intent-filter>
-                <action android:name="android.service.wallpaper.WallpaperService" />
-            </intent-filter>
-            <meta-data android:name="android.service.wallpaper" android:resource="@xml/wallpaper_alien_clear" />
-        </service>
-
-        <service
-            android:name=".wallpaper.AlienBrainWallpaperService"
-            android:exported="true"
-            android:label="@string/wp_alien_brain"
-            android:permission="android.permission.BIND_WALLPAPER">
-            <intent-filter>
-                <action android:name="android.service.wallpaper.WallpaperService" />
-            </intent-filter>
-            <meta-data android:name="android.service.wallpaper" android:resource="@xml/wallpaper_alien_brain" />
         </service>
 
         <service

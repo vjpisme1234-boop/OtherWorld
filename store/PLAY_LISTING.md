@@ -21,7 +21,7 @@ Turn your phone into another world.
 • "You have a phone call" — miss a call and the alien whispers it to you the next time you open your phone.
 • Glass everything — a dock you can move anywhere, folders that open as mini spinning wheels, clock, weather and battery widgets.
 • Your sounds — soft glass sounds for the wheel, a low boom when the Earth explodes, or record your own.
-• Gestures — double-tap to lock, swipe down for notifications, two fingers for quick settings.
+• Gestures — swipe down for notifications, two fingers for quick settings.
 
 No accounts. No ads. No tracking. Everything stays on your phone.
 
@@ -37,7 +37,7 @@ No accounts. No ads. No tracking. Everything stays on your phone.
 - Everything else (contacts, files, audio, notes, app list) is stored **on device only** and never leaves it → under Play's rules this is not "collected".
 
 ## Sensitive permissions — what to tell Google
-- **Accessibility service (declaration required):** "Other World is a home-screen launcher. Its accessibility service is used only to lock the screen when the user double-taps empty space on the home screen (performGlobalAction LOCK_SCREEN), so biometric unlock keeps working. It does not read window content (canRetrieveWindowContent=false) or collect any data." Also add the in-app prominent disclosure note: Home settings → Home gestures already explains it before opening Accessibility settings. You'll need a short video of turning it on and double-tapping to lock.
+- **Accessibility service:** not used (double-tap to lock was removed), so no Accessibility declaration is needed.
 - **Notification listener:** used for unread dots, the alien's notification glow, and noticing missed calls (so the alien can say "you have a phone call"); content not stored or sent.
 - **QUERY_ALL_PACKAGES:** not used — the app lists launchable apps via a `<queries>` LAUNCHER intent, which needs no declaration.
 - **Microphone (RECORD_AUDIO):** (1) while the user holds "Hold to record" for a wheel sound (saved on the phone only); (2) "Talk along": Android's Visualizer needs it to read the loudness of sound the phone is playing, so the alien's lips can move with an assistant's voice. Only a live loudness level is read; no audio is recorded, stored or sent. Asked in the first-run setup, optional. Data safety: audio is **not collected** (processed on device, never leaves it).

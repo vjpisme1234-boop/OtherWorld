@@ -108,16 +108,6 @@ fun SettingsPage(state: LauncherState, apps: Map<String, AppInfo>, onChooseDockA
                     )
                 }
             }
-            // Icon style
-            GlassLabel("Icon style")
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassButton("Custom glass", selected = state.iconStyle == IconStyle.CUSTOM_GLASS) {
-                    LauncherStore.update { it.copy(iconStyle = IconStyle.CUSTOM_GLASS) }
-                }
-                GlassButton("Originals in glass", selected = state.iconStyle == IconStyle.ORIGINAL_IN_GLASS) {
-                    LauncherStore.update { it.copy(iconStyle = IconStyle.ORIGINAL_IN_GLASS) }
-                }
-            }
             // Icon size
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 GlassLabel("Icon size", modifier = Modifier.weight(1f))

@@ -86,7 +86,7 @@ val DEFAULT_SOUND_VOLUME = mapOf("drawer" to 0.061f, "ring" to 0f, "tick" to 0.0
 data class LauncherState(
     val pages: List<Page> = listOf(Page()),
     val dock: List<String?> = List(5) { null },
-    val iconStyle: IconStyle = IconStyle.CUSTOM_GLASS,
+    val iconStyle: IconStyle = IconStyle.ORIGINAL_IN_GLASS,
     val iconSize: IconSize = IconSize.S,
     val showLabels: Boolean = true,
     val defaultPage: Int = 0,
@@ -118,7 +118,6 @@ data class LauncherState(
     val dockLift: Float = DEFAULT_LIFT,
     val dotsLift: Float = DEFAULT_LIFT,
     /** Gestures on empty home. */
-    val doubleTapLock: Boolean = true,
     val swipeDownNotifications: Boolean = true,
     val twoFingerQuickSettings: Boolean = true,
     // ── Wheel ──
@@ -264,7 +263,6 @@ object LauncherStore {
         put("showDots", s.showDots)
         put("dockLift", s.dockLift.toDouble())
         put("dotsLift", s.dotsLift.toDouble())
-        put("doubleTapLock", s.doubleTapLock)
         put("swipeDownNotifications", s.swipeDownNotifications)
         put("twoFingerQuickSettings", s.twoFingerQuickSettings)
         put("ringOf", JSONObject().apply { s.ringOf.forEach { (k, v) -> put(k, v) } })
@@ -300,7 +298,7 @@ object LauncherStore {
         return LauncherState(
             pages = pages,
             dock = dock,
-            iconStyle = IconStyle.valueOf(o.optString("iconStyle", IconStyle.CUSTOM_GLASS.name)),
+            iconStyle = IconStyle.ORIGINAL_IN_GLASS,   // one icon look now (the choice was removed)
             iconSize = IconSize.valueOf(o.optString("iconSize", IconSize.S.name)),
             showLabels = o.optBoolean("showLabels", true),
             defaultPage = o.optInt("defaultPage", 0).coerceIn(0, pages.size - 1),
@@ -318,7 +316,6 @@ object LauncherStore {
             showDots = o.optBoolean("showDots", true),
             dockLift = o.optDouble("dockLift", DEFAULT_LIFT.toDouble()).toFloat(),
             dotsLift = o.optDouble("dotsLift", DEFAULT_LIFT.toDouble()).toFloat(),
-            doubleTapLock = o.optBoolean("doubleTapLock", true),
             swipeDownNotifications = o.optBoolean("swipeDownNotifications", true),
             twoFingerQuickSettings = o.optBoolean("twoFingerQuickSettings", true),
             ringOf = o.optJSONObject("ringOf")?.let { g -> g.keys().asSequence().associateWith { g.getString(it) } }.orEmpty(),

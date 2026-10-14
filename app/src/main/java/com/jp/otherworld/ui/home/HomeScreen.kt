@@ -83,7 +83,6 @@ fun HomeScreen(
     onEmptyDockSlot: (Int) -> Unit,
     onOpenFolder: (HomeItem.Folder, Int) -> Unit,
     onFolderMenu: (HomeItem.Folder, Int) -> Unit,
-    onDoubleTap: () -> Unit,
     onSwipeDown: () -> Unit,
     onTwoFingerDown: () -> Unit
 ) {
@@ -114,10 +113,9 @@ fun HomeScreen(
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .pointerInput(state.doubleTapLock) {
+                        .pointerInput(Unit) {
                             detectTapGestures(
                                 onTap = { onEditWidget(null) },
-                                onDoubleTap = if (state.doubleTapLock) { _ -> onDoubleTap() } else null,
                                 onLongPress = { onHomeLongPress() }
                             )
                         }

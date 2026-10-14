@@ -119,7 +119,8 @@ class TalkListener {
  * moves like in the video, but skip ahead to frames whose mouth matches how loud the voice is right now.
  * When the voice stops the frames fade back to the normal face.
  */
-class TalkFace(private val assets: android.content.res.AssetManager, asset: String, private val framesDir: String = "talkface") {
+class TalkFace(private val assets: android.content.res.AssetManager, asset: String) {
+    private val framesDir = "talkface"
     private val count: Int
     private val fps: Float
     private val openOf: FloatArray
@@ -195,7 +196,7 @@ class TalkFace(private val assets: android.content.res.AssetManager, asset: Stri
 object Mouth {
     /** Hue shift from the cyan original to this wallpaper's colour (null = cyan). */
     fun tint(asset: String): android.graphics.ColorMatrix? {
-        if (asset.contains("ice") || asset.contains("clear")) return android.graphics.ColorMatrix().apply { setSaturation(0.18f) }
+        if (asset.contains("ice")) return android.graphics.ColorMatrix().apply { setSaturation(0.18f) }
         val deg = when {
             asset.contains("green") -> -71f; asset.contains("pink") -> 133f; asset.contains("purple") -> 86f
             asset.contains("red") -> 174f; asset.contains("gold") -> -162f; asset.contains("blue") -> 39f

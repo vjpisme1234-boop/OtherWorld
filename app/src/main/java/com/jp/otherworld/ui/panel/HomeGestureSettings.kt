@@ -13,19 +13,17 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.jp.otherworld.data.LauncherState
 import com.jp.otherworld.data.LauncherStore
-import com.jp.otherworld.service.GestureService
 import com.jp.otherworld.ui.common.*
 
 /** Home settings → Home gestures & dots. */
 @Composable
 fun HomeGestureSettings(state: LauncherState) {
     val context = LocalContext.current
-    var lockReady by remember { mutableStateOf(GestureService.isEnabled(context)) }
     var dotsReady by remember { mutableStateOf(hasNotificationAccess(context)) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val obs = LifecycleEventObserver { _, e ->
-            if (e == Lifecycle.Event.ON_RESUME) { lockReady = GestureService.isEnabled(context); dotsReady = hasNotificationAccess(context) }
+            if (e == Lifecycle.Event.ON_RESUME) { dotsReady = hasNotificationAccess(context) }
         }
         lifecycle.addObserver(obs)
         onDispose { lifecycle.removeObserver(obs) }
@@ -45,11 +43,6 @@ fun HomeGestureSettings(state: LauncherState) {
         Modifier.fillMaxWidth().glass(RoundedCornerShape(24.dp)).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Toggle("Double-tap to lock", state.doubleTapLock) { v -> LauncherStore.update { it.copy(doubleTapLock = v) } }
-        if (state.doubleTapLock && !lockReady) {
-            GlassLabel("Needs Other World turned on in Accessibility (Installed apps → Other World). It's only used to lock the screen; fingerprint and face unlock keep working.", 13.sp, GlassDim)
-            GlassButton("Open Accessibility") { GestureService.openSettings(context) }
-        }
         Toggle("Swipe down: notifications", state.swipeDownNotifications) { v -> LauncherStore.update { it.copy(swipeDownNotifications = v) } }
         Toggle("Two-finger swipe down: quick settings", state.twoFingerQuickSettings) { v -> LauncherStore.update { it.copy(twoFingerQuickSettings = v) } }
         GlassLabel("Swipe up still opens the wheel.", 13.sp, GlassDim)

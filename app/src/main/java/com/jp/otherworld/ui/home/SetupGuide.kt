@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.jp.otherworld.data.LauncherStore
-import com.jp.otherworld.service.GestureService
 import com.jp.otherworld.ui.common.*
 import com.jp.otherworld.ui.panel.hasNotificationAccess
 import com.jp.otherworld.ui.panel.openNotificationAccess
@@ -47,7 +46,6 @@ fun SetupGuide(onDone: () -> Unit) {
     val alien = remember(tick) { alienWallpaperSet(context) }
     val notif = remember(tick) { hasNotificationAccess(context) }
     val mic = remember(tick) { context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED }
-    val lock = remember(tick) { GestureService.isEnabled(context) }
 
     val askHome = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { tick++ }
     val askMic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { tick++ }
@@ -77,9 +75,6 @@ fun SetupGuide(onDone: () -> Unit) {
             }
             Step("Talk along", "His mouth moves when your assistant (Claude, Google, Alexa, Bixby) talks. Uses the microphone permission for loudness only; nothing is recorded.", mic, "Allow") {
                 askMic.launch(Manifest.permission.RECORD_AUDIO)
-            }
-            Step("Double-tap to lock", "Double-tap empty home space to lock the phone. Turn on \"Other World\" in Accessibility.", lock, "Turn on") {
-                GestureService.openSettings(context)
             }
             Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(18.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 GlassLabel("Your secret drawer", 16.sp, GlassCyan)

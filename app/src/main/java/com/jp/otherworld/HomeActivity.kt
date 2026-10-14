@@ -70,6 +70,8 @@ import kotlinx.coroutines.launch
 class HomeActivity : ComponentActivity() {
     // Bumped on every Home press while we're the launcher, so the UI can reset.
     private var homePresses by mutableIntStateOf(0)
+    // Checked each time home comes back: Samsung sometimes hands Home to another launcher.
+    private var isDefaultHome by mutableStateOf(true)
 
     // A widget being added: its id, provider, and the page it goes on.
     private var pendingWidget: Triple<Int, AppWidgetProviderInfo, Int>? = null
@@ -206,7 +208,7 @@ class HomeActivity : ComponentActivity() {
             val alienEyes by produceState<AlienEyes?>(null, homePresses) {
                 value = withContext(Dispatchers.Default) {
                     val (w, h) = com.jp.otherworld.wallpaper.alienSize(context)
-                    AlienEyes(com.jp.otherworld.wallpaper.alienEyeSpots(context), w, h, com.jp.otherworld.wallpaper.alienFaceDrop(context))
+                    AlienEyes(com.jp.otherworld.wallpaper.alienEyeSpots(context), w, h)
                 }
             }
             // Room around each eye for the face's float, tilt (~6% of the width) and lean (~3%) plus a fingertip.
@@ -221,10 +223,6 @@ class HomeActivity : ComponentActivity() {
                     onEmptyDockSlot = { chooserSlot = it },
                     onOpenFolder = { f, page -> openFolder = f.id to page },
                     onFolderMenu = { f, page -> folderMenu = f.id to page },
-                    onDoubleTap = {
-                        if (!com.jp.otherworld.service.Gestures.lock())
-                            Toast.makeText(context, "To lock with a double-tap, turn on Other World in Accessibility (Home settings → Home gestures)", Toast.LENGTH_LONG).show()
-                    },
                     onSwipeDown = { if (state.swipeDownNotifications) com.jp.otherworld.service.Gestures.notifications(context) },
                     onTwoFingerDown = { if (state.twoFingerQuickSettings) com.jp.otherworld.service.Gestures.quickSettings(context) }
                 )
@@ -397,6 +395,15 @@ class HomeActivity : ComponentActivity() {
 
                 // First run: the setup guide (home screen, wallpaper, notifications, talk along, lock, secret drawer).
                 if (!state.setupDone) com.jp.otherworld.ui.home.SetupGuide { }
+                // Not the default home any more: one tap to make it the home screen again.
+                val askHome = androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+                ) { isDefaultHome = getSystemService(android.app.role.RoleManager::class.java)?.isRoleHeld(android.app.role.RoleManager.ROLE_HOME) != false }
+                if (state.setupDone && !isDefaultHome && !vaultOpen && !drawerOpen) Box(Modifier.fillMaxSize().statusBarsPadding().padding(top = 8.dp), contentAlignment = Alignment.TopCenter) {
+                    com.jp.otherworld.ui.common.GlassButton("Make Other World your home screen", selected = true) {
+                        getSystemService(android.app.role.RoleManager::class.java)?.let { askHome.launch(it.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME)) }
+                    }
+                }
 
                 // Once: offer Talk along (the alien's lips move when an assistant talks); it needs the microphone.
                 val askTalkMic = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -481,6 +488,7 @@ class HomeActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        isDefaultHome = getSystemService(android.app.role.RoleManager::class.java)?.isRoleHeld(android.app.role.RoleManager.ROLE_HOME) != false
         // First time Other World is the home screen: offer the green alien wallpaper (once).
         val rm = getSystemService(android.app.role.RoleManager::class.java)
         if (LauncherStore.state.value.setupDone && rm?.isRoleHeld(android.app.role.RoleManager.ROLE_HOME) == true && !LauncherStore.state.value.globeOffered) {
@@ -569,12 +577,12 @@ private fun Modifier.leanAlien(): Modifier = pointerInput(Unit) {
 }
 
 /** The two eyes of the alien wallpaper: spots as fractions of the image, plus the image size. */
-private class AlienEyes(val spots: List<android.graphics.RectF>, val imgW: Int, val imgH: Int, val drop: Float = 0f) {
+private class AlienEyes(val spots: List<android.graphics.RectF>, val imgW: Int, val imgH: Int) {
     /** Each eye on a screen of w×h, placed the way the wallpaper draws it ([alienPlace]). */
     fun onScreen(w: Float, h: Float): List<androidx.compose.ui.geometry.Rect> {
         val p = com.jp.otherworld.wallpaper.alienPlace(w, h, imgW, imgH)
         val sc = p.width() / imgW
-        val l = p.left; val t = p.top + p.height() * drop
+        val l = p.left; val t = p.top
         return spots.map { androidx.compose.ui.geometry.Rect(l + it.left * imgW * sc, t + it.top * imgH * sc, l + it.right * imgW * sc, t + it.bottom * imgH * sc) }
     }
 }
