@@ -34,6 +34,7 @@ class TalkListener {
     private var loudest = -9600f
 
     fun start(context: Context): Boolean {
+        appContext = context.applicationContext
         if (viz != null) return true
         audio = context.getSystemService(android.media.AudioManager::class.java)
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return false
@@ -70,23 +71,73 @@ class TalkListener {
         return now < voiceUntil
     }
 
+    // Some apps (Claude's voice mode, many assistants) play through a low-latency path that skips the
+    // shared mix this listens to, so their voice reads as silence. Android still says *something* is
+    // playing: then the mouth does a natural talking motion of its own while that sound lasts.
+    private var playingUntil = 0L; private var playCheckedAt = 0L; private var silentSince = 0L
+    private fun somethingPlaying(now: Long): Boolean {
+        if (now - playCheckedAt > 300) {
+            playCheckedAt = now
+            val any = runCatching {
+                audio?.activePlaybackConfigurations.orEmpty().any { cfg ->
+                    val u = cfg.audioAttributes.usage
+                    u == android.media.AudioAttributes.USAGE_MEDIA || u == android.media.AudioAttributes.USAGE_ASSISTANT ||
+                        u == android.media.AudioAttributes.USAGE_VOICE_COMMUNICATION || u == android.media.AudioAttributes.USAGE_UNKNOWN ||
+                        u == android.media.AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
+                }
+            }.getOrDefault(false)
+            if (any) playingUntil = now + 500
+        }
+        return now < playingUntil
+    }
+    // Speech-like bursts: 2.5–4 s of syllables (~5 a second, varied size), then a 1–2 s pause.
+    private var burstEnd = 0L; private var pauseEnd = 0L
+    private fun talkingMotion(now: Long): Float {
+        if (now >= pauseEnd && now >= burstEnd) {                        // start the next burst
+            val r = ((now * 2654435761L) ushr 11) % 1000L
+            burstEnd = now + 2500 + r * 15 / 10
+            pauseEnd = burstEnd + 1000 + ((r * 7) % 1000L)
+        }
+        if (now >= burstEnd) return 0f                                   // pausing
+        val t = now / 1000.0
+        val syl = (t * 4.7).toLong()
+        val amp = 0.45f + 0.55f * (((syl * 2654435761L) ushr 7) % 1000L).toFloat() / 1000f
+        val phase = (t * 4.7) % 1.0
+        return (amp * Math.sin(phase * Math.PI).toFloat()).coerceIn(0f, 1f)
+    }
+    private var lastRestart = 0L
+    private var appContext: Context? = null
+
     /** How open the mouth should be now, 0..1 (opens fast, closes a little slower, like speech). */
     fun open(anySound: Boolean = false): Float {
         val v = viz ?: return 0f
-        val heard = anySound || voicePlaying()
+        val now = android.os.SystemClock.uptimeMillis()
+        val playing = somethingPlaying(now)
+        val voice = anySound || voicePlaying()
+        val heard = voice || playing
+        var mixSilent = false
         val target = if (!heard) 0f else runCatching {
             v.getMeasurementPeakRms(m)
             // mRms is in millibels (about -9600 = silence .. 0 = full). Phones play at very different volumes,
             // so judge against the loudest of the last few seconds: syllables open it fully at any volume,
             // the quiet between words closes it, and only real silence (< -8500) keeps it shut.
-            // mRms is in millibels (about -9600 = silence .. 0 = full). Phones play at very different volumes,
-            // so judge against the loudest of the last few seconds: syllables open it fully at any volume,
-            // the quiet between words closes it, and only real silence (< -8500) keeps it shut.
             val rms = m.mRms.toFloat()
             loudest = if (rms > loudest) rms else loudest - 6f              // slowly forgets old peaks
-            if (rms < -8500f) 0f
+            mixSilent = rms < -8500f
+            if (mixSilent) 0f
             else Math.sqrt(((rms - (loudest - 1500f)) / 1500f).coerceIn(0f, 1f).toDouble()).toFloat()
-        }.getOrDefault(0f)
+        }.getOrDefault(0f).let { heardLevel ->
+            // Playing but the mix is silent for a moment: the sound is going round it (Claude, assistants).
+            if (mixSilent && playing) {
+                if (silentSince == 0L) silentSince = now
+                // The listener may have gone stale: restart it (at most every 10 s) so real sound can come back.
+                if (now - silentSince > 3000 && now - lastRestart > 10_000) {
+                    lastRestart = now
+                    appContext?.let { c -> runCatching { viz?.enabled = false; viz?.release() }; viz = null; start(c) }
+                }
+                if (now - silentSince > 250) talkingMotion(now) else 0f
+            } else { silentSince = 0L; if (voice) heardLevel else 0f }
+        }
         level += (target - level) * (if (target > level) 0.55f else 0.35f)
         // Shape: bright sounds (ee, s) pull the mouth wide and flat, dark ones (oo, oh) small and round.
         runCatching {

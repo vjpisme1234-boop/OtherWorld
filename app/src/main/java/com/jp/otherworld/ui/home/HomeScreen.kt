@@ -189,7 +189,7 @@ fun HomeScreen(
             }
         }
         // The page dots and the dock can be moved up (Move dock / Move page dots, or hold the dots).
-        MovableBar(state.dotsLift, 0.29f, editingWidget == EDIT_DOTS, onHold = { onEditWidget(EDIT_DOTS) }, onDone = { onEditWidget(null) },
+        MovableBar(state.dotsLift, 0.27f, editingWidget == EDIT_DOTS, onHold = { onEditWidget(EDIT_DOTS) }, onDone = { onEditWidget(null) },
             save = { v -> LauncherStore.update { it.copy(dotsLift = v) } }) {
             PageDots(state.pages.size, pager.currentPage)
         }

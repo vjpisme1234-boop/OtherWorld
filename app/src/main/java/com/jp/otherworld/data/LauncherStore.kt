@@ -75,20 +75,20 @@ sealed class HomeItem {
 data class Page(val items: List<HomeItem> = emptyList())
 
 /**
- * First-install defaults = the user's own settings on their Fold (2026-10-12): sound picks and (quiet) volumes,
- * ring-change sound off, Any-sound talk along, small custom-glass icons, no night mode, dock at the top.
+ * First-install defaults = the user's own settings on their Fold (updated 2026-10-14): sound picks and (quiet) volumes,
+ * ring-change sound off, talk along on Voices, small icons without names, no night mode, dock at the top.
  */
 const val DEFAULT_LIFT = -1f   // "not moved yet": use the default share of the screen (see MovableBar)
-val DEFAULT_SOUND_PICK = mapOf("drawer" to 1, "open" to 1, "ring" to 3)
+val DEFAULT_SOUND_PICK = mapOf("drawer" to 1, "open" to 1, "ring" to 3, "tick" to 2)
 val DEFAULT_SOUND_OFF = setOf("ring")
-val DEFAULT_SOUND_VOLUME = mapOf("drawer" to 0.061f, "ring" to 0f, "tick" to 0.047f, "open" to 0.058f)
+val DEFAULT_SOUND_VOLUME = mapOf("drawer" to 0.147f, "ring" to 0f, "tick" to 0.029f, "open" to 0.058f, "boom" to 0.733f)
 
 data class LauncherState(
     val pages: List<Page> = listOf(Page()),
     val dock: List<String?> = List(5) { null },
     val iconStyle: IconStyle = IconStyle.ORIGINAL_IN_GLASS,
     val iconSize: IconSize = IconSize.S,
-    val showLabels: Boolean = true,
+    val showLabels: Boolean = false,
     val defaultPage: Int = 0,
     /** The default wallpaper (green alien; the globe before 2026-10-10) has been offered, first time we became home. */
     val globeOffered: Boolean = false,
@@ -98,7 +98,7 @@ data class LauncherState(
     /** New notifications make the alien's halo pulse in a colour. */
     val notifGlow: Boolean = true,
     /** Talk along: the alien's lips move with ASSISTANT voices (Claude, Google, Alexa, Bixby…), ANY sound, or OFF. Needs the microphone permission. */
-    val talkMode: String = "ANY",
+    val talkMode: String = "ASSISTANT",
     /** The one-time "let him talk along?" question has been answered. */
     val talkAsked: Boolean = false,
     /** The first-run setup guide has been finished (older installs count as done). */
@@ -107,7 +107,7 @@ data class LauncherState(
     val glowColors: Map<String, Int> = emptyMap(),
     /** Night mode: alien dims, eyes half shut. Times are minutes after midnight. */
     val nightOn: Boolean = false,
-    val nightStart: Int = 22 * 60,
+    val nightStart: Int = 19 * 60 + 30,
     val nightEnd: Int = 7 * 60,
     /** How the hidden drawer opens: VIDEO (smoke → glass case, the user's pick), or the alien breaking apart: DUST, SHARDS, SPARKS. */
     val vaultEffect: String = "VIDEO_SMOKE",
@@ -300,17 +300,17 @@ object LauncherStore {
             dock = dock,
             iconStyle = IconStyle.ORIGINAL_IN_GLASS,   // one icon look now (the choice was removed)
             iconSize = IconSize.valueOf(o.optString("iconSize", IconSize.S.name)),
-            showLabels = o.optBoolean("showLabels", true),
+            showLabels = o.optBoolean("showLabels", false),
             defaultPage = o.optInt("defaultPage", 0).coerceIn(0, pages.size - 1),
             globeOffered = o.optBoolean("globeOffered", false),
             secretHintDeleted = o.optBoolean("secretHintDeleted", false),
             notifGlow = o.optBoolean("notifGlow", true),
-            talkMode = o.optString("talkMode", "ANY"),
+            talkMode = o.optString("talkMode", "ASSISTANT"),
             talkAsked = o.optBoolean("talkAsked", false),
             setupDone = o.optBoolean("setupDone", o.has("pages")),
             glowColors = o.optJSONObject("glowColors")?.let { g -> g.keys().asSequence().associateWith { g.getInt(it) } }.orEmpty(),
             nightOn = o.optBoolean("nightOn", false),
-            nightStart = o.optInt("nightStart", 22 * 60),
+            nightStart = o.optInt("nightStart", 19 * 60 + 30),
             nightEnd = o.optInt("nightEnd", 7 * 60),
             vaultEffect = o.optString("vaultEffect", "VIDEO_SMOKE"),
             showDots = o.optBoolean("showDots", true),
